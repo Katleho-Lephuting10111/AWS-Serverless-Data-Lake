@@ -1,0 +1,423 @@
+# ============================================
+# IAM Role for Athena Query Lambda Function
+# ============================================
+# This Terraform configuration creates an IAM role with
+# minimal required permissions for Lambda to:
+# - Run Athena queries (start, get status, get results)
+# - Access S3 buckets for data and results
+# - Write logs to CloudWatch
+# ============================================
+
+# ============================================
+# Variables
+# ============================================
+
+variable "role_name" {
+  type        = string
+  default     = "athena-lambda-role"
+  description = "Name of the IAM role"
+}
+
+variable "path" {
+  type        = string
+  default     = "/"
+  description = "Path for the IAM role"
+}
+
+variable "athena_database_name" {
+  type        = string
+  default     = "student_db"
+  description = "Name of the Athena/Glue database"
+}
+
+variable "data_lake_bucket" {
+  type        = string
+  default     = "student-socialmedia-datalake"
+  description = "S3 bucket for the data lake"
+}
+
+variable "results_bucket" {
+  type        = string
+  default     = "student-socialmedia-datalake"
+  description = "S3 bucket for query results"
+}
+
+variable "enable_s3_bucket_restrictions" {
+  type        = bool
+  default     = true
+  description = "Whether to restrict S3 access to specific buckets"
+}
+
+variable "log_retention_days" {
+  type        = number
+  default     = 14
+  description = "CloudWatch log retention in days"
+}
+
+variable "tags" {
+  type        = map(string)
+  default = {
+    Project     = "Student-DataLake"
+    Environment = "production"
+    ManagedBy   = "Terraform"
+    Owner       = "data-team"
+  }
+  description = "Tags to apply to all resources"
+}
+
+# ============================================
+# IAM Role for Lambda
+# ============================================
+
+resource "aws_iam_role" "athena_lambda" {
+  name = var.role_name
+  path = var.path
+
+  # Trust policy allowing Lambda to assume this role
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Principal = {
+          Service = "lambda.amazonaws.com"
+        }
+        Action = "sts:AssumeRole"
+      }
+    ]
+  })
+
+  tags = var.tags
+}
+
+# ============================================
+# IAM Policy: Athena Full Access
+# ============================================
+
+resource "aws_iam_policy" "athena_access" {
+  name        = "${var.role_name}-athena-policy"
+  description = "Policy for Athena query execution"
+
+  # Use dynamic blocks to restrict to specific database if enabled
+  dynamic "statement" {
+    for_each = var.enable_s3_bucket_restrictions ? [1] : []
+    content {
+      Effect = "Allow"
+      Action = [
+        "athena:StartQueryExecution",
+        "athena:GetQueryExecution",
+        "athena:GetQueryResults",
+        "athena:StopQueryExecution",
+        "athena:GetWorkGroup",
+        "athena:ListWorkGroups",
+        "athena:ListQueryExecutions",
+        "athena:GetNamedQuery",
+        "athena:CreateNamedQuery",
+        "athena:BatchGetQueryExecution",
+      ]
+      Resource = [
+        # Specific work group
+        "arn:aws:athena:*:*:workgroup/*",
+        # Specific database
+        "arn:aws:athena:*:*:databases/${var.athena_database_name}",
+        "arn:aws:athena:*:*:databases/${var.athena_database_name}*",
+      ]
+    }
+  }
+
+  # Fallback: Allow all resources (when restrictions disabled)
+  dynamic "statement_unrestricted" {
+    for_each = var.enable_s3_bucket_restrictions ? [] : [1]
+    content {
+      Effect = "Allow"
+      Action = [
+        "athena:StartQueryExecution",
+        "athena:GetQueryExecution",
+        "athena:GetQueryResults",
+        "athena:StopQueryExecution",
+        "athena:GetWorkGroup",
+        "athena:ListWorkGroups",
+        "athena:ListQueryExecutions",
+        "athena:GetNamedQuery",
+        "athena:CreateNamedQuery",
+        "athena:BatchGetQueryExecution",
+      ]
+      Resource = "*"
+    }
+  }
+
+  tags = var.tags
+}
+
+# ============================================
+# IAM Policy: S3 Access for Data and Results
+# ============================================
+
+resource "aws_iam_policy" "s3_access" {
+  name        = "${var.role_name}-s3-policy"
+  description = "Policy for S3 access to data lake and results"
+
+  # Define bucket ARNs
+  locals {
+    data_lake_arn     = "arn:aws:s3:::${var.data_lake_bucket}"
+    data_lake_objects = "arn:aws:s3:::${var.data_lake_bucket}/*"
+    results_arn       = "arn:aws:s3:::${var.results_bucket}"
+    results_objects   = "arn:aws:s3:::${var.results_bucket}/*"
+  }
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      # Read access to data lake
+      {
+        Effect = "Allow"
+        Action = [
+          "s3:GetObject",
+          "s3:GetObjectVersion",
+          "s3:ListBucket",
+        ]
+        Resource = [
+          local.data_lake_arn,
+          local.data_lake_objects,
+        ]
+        Condition = {
+          StringEquals = {
+            "aws:ResourceAccount" = "${data.aws_caller_identity.current.account_id}"
+          }
+        }
+      },
+
+      # Write access for query results
+      {
+        Effect = "Allow"
+        Action = [
+          "s3:PutObject",
+          "s3:DeleteObject",
+          "s3:PutObjectAcl",
+        ]
+        Resource = [
+          local.results_arn,
+          local.results_objects,
+        ]
+        Condition = {
+          StringEquals = {
+            "aws:ResourceAccount" = "${data.aws_caller_identity.current.account_id}"
+          }
+        }
+      },
+
+      # Allow creating folders/prefixes
+      {
+        Effect = "Allow"
+        Action = [
+          "s3:PutObject",
+          "s3:DeleteObject",
+        ]
+        Resource = [
+          "${local.results_arn}/athena-results/*",
+          "${local.results_arn}/query-results/*",
+        ]
+      },
+
+      # List access to check bucket exists
+      {
+        Effect = "Allow"
+        Action = [
+          "s3:ListBucket",
+        ]
+        Resource = [
+          local.results_arn,
+        ]
+      },
+    ]
+  })
+
+  tags = var.tags
+}
+
+# ============================================
+# IAM Policy: CloudWatch Logs Access
+# ============================================
+
+resource "aws_iam_policy" "cloudwatch_logs" {
+  name        = "${var.role_name}-logs-policy"
+  description = "Policy for CloudWatch Logs access"
+
+  # Define log group ARN
+  locals {
+    log_group_arn = "arn:aws:logs:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:log-group:/aws/lambda/*"
+    log_group_path = "/aws/lambda/*"
+  }
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      # Create log groups
+      {
+        Effect = "Allow"
+        Action = [
+          "logs:CreateLogGroup",
+        ]
+        Resource = [
+          "arn:aws:logs:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:log-group:*"
+        ]
+      },
+
+      # Write logs and create streams
+      {
+        Effect = "Allow"
+        Action = [
+          "logs:CreateLogStream",
+          "logs:PutLogEvents",
+          "logs:DescribeLogStreams",
+        ]
+        Resource = [
+          local.log_group_arn,
+        ]
+      },
+    ]
+  })
+
+  tags = var.tags
+}
+
+# ============================================
+# IAM Policy: Glue Catalog Read Access (Optional)
+# ============================================
+
+resource "aws_iam_policy" "glue_catalog" {
+  name        = "${var.role_name}-glue-policy"
+  description = "Policy for Glue Catalog read access"
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      # Read database and table metadata
+      {
+        Effect = "Allow"
+        Action = [
+          "glue:GetDatabase",
+          "glue:GetDatabases",
+          "glue:GetTable",
+          "glue:GetTables",
+          "glue:GetPartitions",
+          "glue:BatchGetPartition",
+          "glue:GetPartition",
+          "glue:GetTableVersions",
+        ]
+        Resource = [
+          "arn:aws:glue:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:database/${var.athena_database_name}",
+          "arn:aws:glue:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:table/*/*",
+          "arn:aws:glue:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:catalog",
+        ]
+      },
+    ]
+  })
+
+  tags = var.tags
+}
+
+# ============================================
+# Attach Policies to Role
+# ============================================
+
+resource "aws_iam_role_policy_attachment" "athena" {
+  role       = aws_iam_role.athena_lambda.name
+  policy_arn = aws_iam_policy.athena_access.arn
+}
+
+resource "aws_iam_role_policy_attachment" "s3" {
+  role       = aws_iam_role.athena_lambda.name
+  policy_arn = aws_iam_policy.s3_access.arn
+}
+
+resource "aws_iam_role_policy_attachment" "logs" {
+  role       = aws_iam_role.athena_lambda.name
+  policy_arn = aws_iam_policy.cloudwatch_logs.arn
+}
+
+resource "aws_iam_role_policy_attachment" "glue" {
+  role       = aws_iam_role.athena_lambda.name
+  policy_arn = aws_iam_policy.glue_catalog.arn
+}
+
+# ============================================
+# CloudWatch Log Group for Lambda
+# ============================================
+
+resource "aws_cloudwatch_log_group" "athena_lambda" {
+  name              = "/aws/lambda/${var.role_name}"
+  retention_in_days = var.log_retention_days
+
+  tags = var.tags
+}
+
+# ============================================
+# Data Sources (for ARNs)
+# ============================================
+
+data "aws_caller_identity" "current" {}
+data "aws_region" "current" {}
+
+# ============================================
+# Outputs
+# ============================================
+
+output "role_name" {
+  description = "Name of the IAM role"
+  value       = aws_iam_role.athena_lambda.name
+}
+
+output "role_arn" {
+  description = "ARN of the IAM role"
+  value       = aws_iam_role.athena_lambda.arn
+}
+
+output "role_id" {
+  description = "ID of the IAM role"
+  value       = aws_iam_role.athena_lambda.id
+}
+
+output "log_group_name" {
+  description = "Name of the CloudWatch log group"
+  value       = aws_cloudwatch_log_group.athena_lambda.name
+}
+
+output "log_group_arn" {
+  description = "ARN of the CloudWatch log group"
+  value       = aws_cloudwatch_log_group.athena_lambda.arn
+}
+
+output "policies" {
+  description = "List of attached policy ARNs"
+  value = [
+    aws_iam_policy.athena_access.arn,
+    aws_iam_policy.s3_access.arn,
+    aws_iam_policy.cloudwatch_logs.arn,
+    aws_iam_policy.glue_catalog.arn,
+  ]
+}
+
+output "permissions_summary" {
+  description = "Summary of permissions granted"
+  value = <<SUMMARY
+IAM Role Permissions Summary:
+-----------------------------
+Athena Actions:
+  - StartQueryExecution, GetQueryExecution, GetQueryResults
+  - StopQueryExecution, ListQueryExecutions
+  - GetWorkGroup, ListWorkGroups
+
+S3 Actions:
+  - GetObject, PutObject, DeleteObject
+  - ListBucket, GetObjectVersion
+
+CloudWatch Logs:
+  - CreateLogGroup, CreateLogStream
+  - PutLogEvents, DescribeLogStreams
+
+Glue Catalog:
+  - GetDatabase, GetTable, GetPartitions
+SUMMARY
+}
+

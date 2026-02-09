@@ -1,0 +1,39 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "AllowAthenaToWriteResults",
+      "Effect": "Allow",
+      "Principal": {
+        "Service": "athena.amazonaws.com"
+      },
+      "Action": [
+        "s3:GetObject",
+        "s3:PutObject",
+        "s3:DeleteObject",
+        "s3:ListBucket"
+      ],
+      "Resource": [
+        "arn:aws:s3:::student-socialmedia-datalake",
+        "arn:aws:s3:::student-socialmedia-datalake/*"
+      ]
+    },
+    {
+      "Sid": "AllowLambdaRoleToAccess",
+      "Effect": "Allow",
+      "Principal": {
+        "AWS": "arn:aws:iam::149901571820:role/lambda-athena-s3-role"
+      },
+      "Action": [
+        "s3:GetObject",
+        "s3:PutObject",
+        "s3:DeleteObject",
+        "s3:ListBucket"
+      ],
+      "Resource": [
+        "arn:aws:s3:::student-socialmedia-datalake",
+        "arn:aws:s3:::student-socialmedia-datalake/*"
+      ]
+    }
+  ]
+}

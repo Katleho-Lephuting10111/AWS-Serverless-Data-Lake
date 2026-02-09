@@ -1,0 +1,241 @@
+# ============================================
+# Lambda Permission: API Gateway Invocation
+# ============================================
+# This Terraform resource grants API Gateway permission
+# to invoke the athena-query-student Lambda function.
+#
+# This is a critical security configuration that allows
+# API Gateway to call the Lambda function through the
+# AWS_PROXY integration type.
+#
+# Note: This resource is already included in api_gateway.tf
+# This file provides a standalone version for direct use.
+# ============================================
+
+# ============================================
+# Variables
+# ============================================
+
+variable "function_name" {
+  type        = string
+  default     = "athena-query-student"
+  description = "Name of the Lambda function"
+}
+
+variable "api_gateway_id" {
+  type        = string
+  default     = ""
+  description = "API Gateway ID (empty to use data source)"
+}
+
+variable "api_gateway_rest_api_id" {
+  type        = string
+  default     = ""
+  description = "REST API ID (alternative to api_gateway_id)"
+}
+
+variable "source_arn" {
+  type        = string
+  default     = ""
+  description = "Custom source ARN (overrides default construction)"
+}
+
+variable "statement_id" {
+  type        = string
+  default     = "AllowAPIGatewayInvoke"
+  description = "Unique statement identifier"
+}
+
+variable "qualifier" {
+  type        = string
+  default     = ""
+  description = "Lambda function version/alias qualifier"
+}
+
+variable "principal" {
+  type        = string
+  default     = "apigateway.amazonaws.com"
+  description = "Service principal that can invoke the function"
+}
+
+variable "action" {
+  type        = string
+  default     = "lambda:InvokeFunction"
+  description = "Action to allow"
+}
+
+variable "tags" {
+  type        = map(string)
+  default = {
+    Project     = "Student-DataLake"
+    ManagedBy   = "Terraform"
+    Purpose     = "APIGatewayLambdaIntegration"
+  }
+  description = "Tags to apply"
+}
+
+# ============================================
+# Lambda Permission Resource
+# ============================================
+
+resource "aws_lambda_permission" "api_gateway_invoke" {
+  # Use provided ARN or construct from components
+  count = var.source_arn != "" ? 1 : (
+    var.api_gateway_rest_api_id != "" ? 1 : (
+      var.api_gateway_id != "" ? 1 : 0
+    )
+  )
+
+  statement_id  = var.statement_id
+  action        = var.action
+  function_name = var.function_name
+  principal     = var.principal
+
+  # Use custom source ARN if provided
+  source_arn = var.source_arn != "" ? var.source_arn : (
+    # Construct ARN from API Gateway REST API
+    var.api_gateway_rest_api_id != "" ? "${var.api_gateway_rest_api_arn}/*/*/*" : (
+      # Use data source to look up API Gateway
+      var.api_gateway_id != "" ? "${data.aws_api_gateway_rest_api.athena_api[0].execution_arn}/*/*/*" : (
+        # Use Lambda's own invocation ARN
+        var.qualifier != "" ? "${var.lambda_invoke_arn}${var.qualifier}" : var.lambda_invoke_arn
+      )
+    )
+  )
+
+  # Qualifier for specific Lambda version/alias
+  dynamic "qualifier" {
+    for_each = var.qualifier != "" ? [var.qualifier] : []
+    content = qualifier.value
+  }
+
+  tags = var.tags
+
+  # Prevent conflicts with other permissions
+  lifecycle {
+    create_before_destroy = true
+  }
+}
+
+# ============================================
+# Alternative: Statement with Explicit Source
+# ============================================
+
+resource "aws_lambda_permission" "api_gateway_invoke_explicit" {
+  count = var.source_arn == "" && var.api_gateway_rest_api_id == "" ? 1 : 0
+
+  statement_id  = "${var.statement_id}-explicit"
+  action        = var.action
+  function_name = var.function_name
+  principal     = var.principal
+
+  # Explicitly construct the source ARN
+  source_arn = format(
+    "arn:aws:execute-api:%s:%s:%s/*/*/*",
+    var.aws_region,
+    var.aws_account_id,
+    var.api_gateway_id_explicit
+  )
+
+  tags = var.tags
+
+  lifecycle {
+    create_before_destroy = true
+  }
+}
+
+# ============================================
+# Variables for Alternative Configuration
+# ============================================
+
+variable "aws_region" {
+  type        = string
+  default     = "eu-west-1"
+  description = "AWS region"
+}
+
+variable "aws_account_id" {
+  type        = string
+  default     = ""
+  description = "AWS account ID (empty to use data source)"
+}
+
+variable "api_gateway_id_explicit" {
+  type        = string
+  default     = ""
+  description = "API Gateway ID for explicit ARN construction"
+}
+
+# ============================================
+# Data Sources for ARN Construction
+# ============================================
+
+data "aws_region" "current" {}
+
+data "aws_caller_identity" "current" {}
+
+data "aws_api_gateway_rest_api" "athena_api" {
+  count = var.api_gateway_id != "" && var.source_arn == "" ? 1 : 0
+  id    = var.api_gateway_id
+}
+
+data "aws_lambda_function" "athena_query" {
+  count = var.lambda_invoke_arn == "" ? 1 : 0
+  function_name = var.function_name
+}
+
+# ============================================
+# Computed Variables
+# ============================================
+
+locals {
+  # Get Lambda invoke ARN
+  lambda_invoke_arn = var.qualifier != "" ? (
+    "${data.aws_lambda_function.athena_query[0].invoke_arn}${var.qualifier}"
+  ) : (
+    try(data.aws_lambda_function.athena_query[0].invoke_arn, "")
+  )
+
+  # Get API Gateway REST API ARN
+  api_gateway_rest_api_arn = var.api_gateway_rest_api_id != "" ? (
+    "arn:aws:execute-api:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:${var.api_gateway_rest_api_id}"
+  ) : (
+    try(data.aws_api_gateway_rest_api.athena_api[0].arn, "")
+  )
+
+  # Construct full source ARN
+  full_source_arn = var.source_arn != "" ? var.source_arn : (
+    var.api_gateway_rest_api_id != "" ? "${local.api_gateway_rest_api_arn}/*/*/*" : (
+      data.aws_api_gateway_rest_api.athena_api[0].execution_arn != "" ? "${data.aws_api_gateway_rest_api.athena_api[0].execution_arn}/*/*/*" : ""
+    )
+  )
+}
+
+# ============================================
+# Output: Source ARN
+# ============================================
+
+output "source_arn" {
+  description = "Source ARN for Lambda permission"
+  value       = local.full_source_arn
+}
+
+output "lambda_permission_arn" {
+  description = "ARN of the Lambda permission resource"
+  value       = try(aws_lambda_permission.api_gateway_invoke[0].id, "")
+}
+
+# ============================================
+# Complete Example: All Resources
+# ============================================
+# Copy and paste this to create a complete API Gateway to Lambda setup:
+# ============================================
+
+# resource "aws_lambda_permission" "api_gateway_invoke" {
+#   statement_id  = "AllowAPIGatewayInvoke"
+#   action        = "lambda:InvokeFunction"
+#   function_name = "athena-query-student"
+#   principal     = "apigateway.amazonaws.com"
+#   source_arn    = "arn:aws:execute-api:region:account:api-id/*/*/*"
+# }
+

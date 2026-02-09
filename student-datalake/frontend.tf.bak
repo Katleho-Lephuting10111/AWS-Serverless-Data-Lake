@@ -1,0 +1,309 @@
+# ============================================
+# S3 Static Website Hosting Configuration
+# ============================================
+# This Terraform configuration sets up S3 for hosting
+# the React frontend with proper routing fallback
+
+variable "frontend_bucket_name" {
+  type        = string
+  default     = "student-datalake-frontend"
+  description = "Name of the S3 bucket for frontend hosting"
+}
+
+variable "frontend_domain" {
+  type        = string
+  default     = ""
+  description = "Optional custom domain for the frontend"
+}
+
+variable "index_document" {
+  type        = string
+  default     = "index.html"
+  description = "Index document for S3 website hosting"
+}
+
+variable "error_document" {
+  type        = string
+  default     = "index.html"
+  description = "Error document for SPA routing fallback"
+}
+
+# ============================================
+# S3 Bucket for Frontend
+# ============================================
+
+resource "aws_s3_bucket" "frontend" {
+  bucket = var.frontend_bucket_name
+
+  tags = {
+    Name        = var.frontend_bucket_name
+    Environment = "production"
+    Project     = "Student DataLake"
+    ManagedBy   = "Terraform"
+  }
+}
+
+# ============================================
+# Bucket Ownership Controls
+# ============================================
+
+resource "aws_s3_bucket_ownership_controls" "frontend" {
+  bucket = aws_s3_bucket.frontend.id
+
+  rule {
+    object_ownership = "BucketOwnerPreferred"
+  }
+}
+
+# ============================================
+# Bucket ACL (for public read access)
+# ============================================
+
+resource "aws_s3_bucket_acl" "frontend" {
+  bucket = aws_s3_bucket.frontend.id
+  acl    = "public-read"
+
+  depends_on = [aws_s3_bucket_ownership_controls.frontend]
+}
+
+# ============================================
+# Website Configuration
+# ============================================
+
+resource "aws_s3_bucket_website_configuration" "frontend" {
+  bucket = aws_s3_bucket.frontend.id
+
+  index_document {
+    suffix = var.index_document
+  }
+
+  error_document {
+    key = var.error_document
+  }
+
+  # Routing rules for SPA - all paths serve index.html
+  routing_rules = jsonencode([
+    {
+      Condition = {
+        KeyPrefixEquals = ""
+      },
+      Redirect = {
+        ReplaceKeyWith = var.index_document
+      }
+    }
+  ])
+}
+
+# ============================================
+# Bucket Policy (Public Read Access)
+# ============================================
+
+resource "aws_s3_bucket_policy" "frontend" {
+  bucket = aws_s3_bucket.frontend.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid       = "PublicReadGetObject"
+        Effect    = "Allow"
+        Principal = "*"
+        Action    = "s3:GetObject"
+        Resource  = "arn:aws:s3:::${var.frontend_bucket_name}/*"
+      }
+    ]
+  })
+}
+
+# ============================================
+# CORS Configuration (for API calls if needed)
+# ============================================
+
+resource "aws_s3_bucket_cors_configuration" "frontend" {
+  bucket = aws_s3_bucket.frontend.id
+
+  cors_rule {
+    allowed_headers = ["*"]
+    allowed_methods = ["GET", "HEAD"]
+    allowed_origins = ["*"]
+    max_age_seconds = 3600
+  }
+}
+
+# ============================================
+# Bucket Versioning (for deployment rollbacks)
+# ============================================
+
+resource "aws_s3_bucket_versioning" "frontend" {
+  bucket = aws_s3_bucket.frontend.id
+
+  versioning_configuration {
+    status = "Enabled"
+  }
+}
+
+# ============================================
+# Lifecycle Rules (clean up old deployments)
+# ============================================
+
+resource "aws_s3_bucket_lifecycle_configuration" "frontend" {
+  bucket = aws_s3_bucket.frontend.id
+
+  rule {
+    id     = "clean-old-deployments"
+    status = "Enabled"
+
+    filter {
+      prefix = "deployments/"
+    }
+
+    expiration {
+      days = 30
+    }
+
+    noncurrent_version_expiration {
+      noncurrent_days = 7
+    }
+  }
+}
+
+# ============================================
+# CloudFront Distribution (Optional - for CDN)
+# ============================================
+
+resource "aws_cloudfront_distribution" "frontend" {
+  count = var.frontend_domain != "" ? 1 : 0
+
+  origin {
+    domain_name = aws_s3_bucket_website_configuration.frontend.website_domain
+    origin_id   = var.frontend_bucket_name
+
+    custom_origin_config {
+      http_port              = 80
+      https_port             = 443
+      origin_protocol_policy = "http-only"
+      origin_ssl_protocols   = ["TLSv1.2"]
+    }
+  }
+
+  enabled             = true
+  is_ipv6_enabled     = true
+  default_root_object = var.index_document
+
+  # Default cache behavior
+  default_cache_behavior {
+    allowed_methods  = ["GET", "HEAD"]
+    cached_methods  = ["GET", "HEAD"]
+    target_origin_id = var.frontend_bucket_name
+
+    forwarded_values {
+      query_string = false
+      cookies {
+        forward = "none"
+      }
+    }
+
+    viewer_protocol_policy = "redirect-to-https"
+    min_ttl                = 0
+    default_ttl            = 86400  # 1 day
+    max_ttl                = 31536000 # 1 year
+  }
+
+  # Price class for cost optimization
+  price_class = "PriceClass_100"  # North America and Europe only
+
+  # Custom error responses for SPA routing
+  custom_error_response {
+    error_code            = 403
+    response_code         = 200
+    response_page_path    = "/${var.index_document}"
+  }
+
+  custom_error_response {
+    error_code            = 404
+    response_code         = 200
+    response_page_path    = "/${var.index_document}"
+  }
+
+  restrictions {
+    geo_restriction {
+      restriction_type = "none"
+    }
+  }
+
+  # Viewer certificate for HTTPS
+  viewer_certificate {
+    cloudfront_default_certificate = true
+  }
+
+  tags = {
+    Name        = "${var.frontend_bucket_name}-cdn"
+    Environment = "production"
+    Project     = "Student DataLake"
+  }
+}
+
+# ============================================
+# Outputs
+# ============================================
+
+output "bucket_name" {
+  description = "S3 bucket name for frontend hosting"
+  value       = aws_s3_bucket.frontend.bucket
+}
+
+output "bucket_website_endpoint" {
+  description = "S3 website endpoint URL"
+  value       = "http://${aws_s3_bucket_frontend.website_domain}"
+}
+
+output "bucket_arn" {
+  description = "S3 bucket ARN"
+  value       = aws_s3_bucket.frontend.arn
+}
+
+output "cloudfront_distribution_id" {
+  description = "CloudFront distribution ID (if domain configured)"
+  value       = try(aws_cloudfront_distribution.frontend[0].id, null)
+}
+
+output "cloudfront_domain_name" {
+  description = "CloudFront distribution domain name"
+  value       = try(aws_cloudfront_distribution.frontend[0].domain_name, null)
+}
+
+output "deployment_instructions" {
+  description = "Instructions for deploying the frontend"
+  value = <<INSTRUCTIONS
+
+========================================
+Frontend Deployment Instructions
+========================================
+
+1. Build the React application:
+   cd Frontend
+   npm install
+   npm run build
+
+2. Sync the build output to S3:
+   aws s3 sync dist/ s3://${var.frontend_bucket_name} \
+     --delete \
+     --cache-control "max-age=31536000"
+
+3. For CloudFront deployments (if configured):
+   aws cloudfront create-invalidation \
+     --distribution-id $(terraform output -raw cloudfront_distribution_id) \
+     --paths "/*"
+
+4. Access the website:
+   - S3 Website: http://${var.frontend_bucket_name}.s3-website-${var.region}.amazonaws.com
+   - CloudFront: https://${try(aws_cloudfront_distribution.frontend[0].domain_name, "NOT_CONFIGURED")}
+
+5. Configure Route 53 (if using custom domain):
+   - Create an A record pointing to CloudFront distribution
+   - Or create ALIAS record to CloudFront domain name
+
+========================================
+INSTRUCTIONS
+}
+

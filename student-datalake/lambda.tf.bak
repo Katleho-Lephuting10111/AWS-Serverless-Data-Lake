@@ -1,0 +1,456 @@
+# ============================================
+# Lambda Function for Athena Query Execution
+# ============================================
+# This Terraform configuration deploys a Python 3.9 Lambda function
+# that executes SQL queries via Amazon Athena.
+#
+# Prerequisites:
+#   - IAM role (iam_role.tf) must be applied first
+#   - Lambda zip file (lambda.zip) must exist in this directory
+# ============================================
+
+# ============================================
+# Variables
+# ============================================
+
+variable "function_name" {
+  type        = string
+  default     = "athena-query-student"
+  description = "Name of the Lambda function"
+}
+
+variable "lambda_zip_file" {
+  type        = string
+  default     = "lambda.zip"
+  description = "Path to the Lambda deployment package"
+}
+
+variable "runtime" {
+  type        = string
+  default     = "python3.9"
+  description = "Lambda runtime"
+}
+
+variable "handler" {
+  type        = string
+  default     = "athena_query.lambda_handler"
+  description = "Lambda handler function"
+}
+
+variable "description" {
+  type        = string
+  default     = "Lambda function to execute Athena SQL queries"
+  description = "Description of the Lambda function"
+}
+
+variable "timeout" {
+  type        = number
+  default     = 60
+  description = "Lambda timeout in seconds (max 900)"
+}
+
+variable "memory_size" {
+  type        = number
+  default     = 256
+  description = "Lambda memory size in MB (128-10240)"
+}
+
+variable "ephemeral_storage" {
+  type        = number
+  default     = 512
+  description = "Ephemeral storage in MB (512-10240)"
+}
+
+variable "reserved_concurrent_executions" {
+  type        = number
+  default     = -1
+  description = "Reserved concurrent executions (-1 = unlimited)"
+}
+
+variable "athena_database_name" {
+  type        = string
+  default     = "student_db"
+  description = "Glue database name"
+}
+
+variable "s3_bucket" {
+  type        = string
+  default     = "student-socialmedia-datalake"
+  description = "S3 bucket for query results"
+}
+
+variable "results_path" {
+  type        = string
+  default     = "athena-results/"
+  description = "S3 prefix for query results"
+}
+
+variable "max_wait_time" {
+  type        = number
+  default     = 60
+  description = "Default max wait time for query execution"
+}
+
+variable "tags" {
+  type        = map(string)
+  default = {
+    Project     = "Student-DataLake"
+    Environment = "production"
+    ManagedBy   = "Terraform"
+    Owner       = "data-team"
+    Function    = "AthenaQuery"
+  }
+  description = "Tags to apply to all resources"
+}
+
+# ============================================
+# Data Source: Get Lambda Zip File Hash
+# ============================================
+
+data "archive_file" "lambda_package" {
+  count = fileexists(var.lambda_zip_file) ? 0 : 1
+
+  type        = "zip"
+  source_file = "athena_query.py"
+  output_path = var.lambda_zip_file
+
+  depends_on = [var.lambda_zip_file]
+}
+
+# ============================================
+# Lambda Function
+# ============================================
+
+resource "aws_lambda_function" "athena_query" {
+  # Use existing zip file or fail with helpful message
+  count         = fileexists(var.lambda_zip_file) ? 1 : 0
+  function_name = var.function_name
+  description   = var.description
+  runtime       = var.runtime
+  handler       = var.handler
+  filename      = var.lambda_zip_file
+
+  # Get hash of zip file for deployment change detection
+  source_code_hash = fileexists(var.lambda_zip_file) ? filebase64sha256(var.lambda_zip_file) : ""
+
+  # IAM Role - must be created in iam_role.tf
+  role = fileexists("iam_role.tf") ? aws_iam_role.athena_lambda[0].arn : null
+
+  # Lambda configuration
+  timeout                  = var.timeout
+  memory_size              = var.memory_size
+  ephemeral_storage {
+    size = var.ephemeral_storage
+  }
+
+  # Reserved concurrent executions
+  reserved_concurrent_executions = var.reserved_concurrent_executions
+
+  # Environment variables
+  environment {
+    variables = {
+      DATABASE_NAME = var.athena_database_name
+      S3_BUCKET     = var.s3_bucket
+      RESULTS_PATH  = "s3://${var.s3_bucket}/${var.results_path}"
+      MAX_WAIT_TIME = var.max_wait_time
+    }
+  }
+
+  # VPC configuration (optional - remove if not needed)
+  # vpc_config {
+  #   security_group_ids = ["sg-xxxxxxxx"]
+  #   subnet_ids         = ["subnet-xxxxxxxx", "subnet-xxxxxxxx"]
+  # }
+
+  # Dead Letter Queue (optional - for failed async invocations)
+  # dead_letter_config {
+  #   target_arn = aws_sqs_queue.lambda_dlq.arn
+  # }
+
+  # Logging configuration
+  logging_config {
+    log_format = "JSON"
+    # log_group will be created automatically
+  }
+
+  # Tags
+  tags = var.tags
+
+  # Timeouts
+  lifecycle {
+    create_before_destroy = true
+    ignore_changes = [
+      # Ignore changes to source_code_hash for debugging
+      # source_code_hash
+    ]
+  }
+
+  depends_on = [
+    # Ensure IAM role is created first
+    # aws_iam_role.athena_lambda,
+    # Ensure CloudWatch log group exists
+    # aws_cloudwatch_log_group.athena_lambda,
+  ]
+}
+
+# ============================================
+# Lambda Alias (for safe deployments)
+# ============================================
+
+resource "aws_lambda_alias" "athena_query" {
+  count = fileexists(var.lambda_zip_file) ? 1 : 0
+
+  name             = "live"
+  description      = "Production alias for athena-query-student"
+  function_name    = aws_lambda_function.athena_query[0].function_name
+  function_version = "$LATEST"
+
+  routing_configuration {
+    additional_version_weights = {}
+  }
+
+  lifecycle {
+    create_before_destroy = true
+  }
+}
+
+# ============================================
+# Lambda Version (for version management)
+# ============================================
+
+resource "aws_lambda_version" "athena_query" {
+  count = fileexists(var.lambda_zip_file) ? 1 : 0
+
+  function_name    = aws_lambda_function.athena_query[0].function_name
+  description     = "Version ${timestamp()}"
+
+  # Automatically publish new version on each apply
+  publish = true
+
+  lifecycle {
+    create_before_destroy = true
+  }
+}
+
+# ============================================
+# CloudWatch Log Group for Lambda
+# ============================================
+
+resource "aws_cloudwatch_log_group" "athena_lambda" {
+  name              = "/aws/lambda/${var.function_name}"
+  retention_in_days = 14
+
+  tags = var.tags
+}
+
+# ============================================
+# Lambda Permission for CloudWatch Logs
+# ============================================
+
+resource "aws_lambda_permission" "cloudwatch_logs" {
+  count = fileexists(var.lambda_zip_file) ? 1 : 0
+
+  statement_id  = "AllowCloudWatchLogs"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.athena_query[0].function_name
+  principal     = "logs.${data.aws_region.current.name}.amazonaws.com"
+  source_arn    = aws_cloudwatch_log_group.athena_lambda.arn
+}
+
+# ============================================
+# Data Sources (for ARNs and Region)
+# ============================================
+
+data "aws_region" "current" {}
+data "aws_caller_identity" "current" {}
+data "aws_partition" "current" {}
+
+# ============================================
+# Outputs
+# ============================================
+
+output "function_name" {
+  description = "Name of the Lambda function"
+  value       = try(aws_lambda_function.athena_query[0].function_name, var.function_name)
+}
+
+output "function_arn" {
+  description = "ARN of the Lambda function"
+  value       = try(aws_lambda_function.athena_query[0].arn, "")
+}
+
+output "invoke_arn" {
+  description = "Invoke ARN for the Lambda function"
+  value       = try(aws_lambda_function.athena_query[0].invoke_arn, "")
+}
+
+output "role_arn" {
+  description = "IAM role ARN attached to the function"
+  value       = try(aws_iam_role.athena_lambda[0].arn, "")
+}
+
+output "log_group_name" {
+  description = "Name of the CloudWatch log group"
+  value       = aws_cloudwatch_log_group.athena_lambda.name
+}
+
+output "log_group_arn" {
+  description = "ARN of the CloudWatch log group"
+  value       = aws_cloudwatch_log_group.athena_lambda.arn
+}
+
+output "version" {
+  description = "Lambda function version"
+  value       = try(aws_lambda_version.athena_query[0].version, "$LATEST")
+}
+
+output "alias_arn" {
+  description = "ARN of the production alias"
+  value       = try(aws_lambda_alias.athena_query[0].arn, "")
+}
+
+output "arn_suffix" {
+  description = "ARN suffix for the function"
+  value       = try(aws_lambda_function.athena_query[0].arn_suffix, "")
+}
+
+output "runtime" {
+  description = "Lambda runtime"
+  value       = var.runtime
+}
+
+output "handler" {
+  description = "Lambda handler"
+  value       = var.handler
+}
+
+output "timeout" {
+  description = "Lambda timeout in seconds"
+  value       = var.timeout
+}
+
+output "memory_size" {
+  description = "Lambda memory size in MB"
+  value       = var.memory_size
+}
+
+output "environment_variables" {
+  description = "Lambda environment variables"
+  sensitive   = true
+  value = {
+    DATABASE_NAME = var.athena_database_name
+    S3_BUCKET    = var.s3_bucket
+    RESULTS_PATH = "s3://${var.s3_bucket}/${var.results_path}"
+    MAX_WAIT_TIME = var.max_wait_time
+  }
+}
+
+output "deployment_instructions" {
+  description = "Instructions for deploying the Lambda function"
+  value = <<INSTRUCTIONS
+
+========================================
+Lambda Deployment Instructions
+========================================
+
+1. Prepare the Lambda deployment package:
+   
+   # Option 1: Using existing athena_query.py
+   cd student-datalake
+   zip lambda.zip athena_query.py
+   
+   # Option 2: Include dependencies (if needed)
+   pip install -t . boto3 botocore
+   zip -r lambda.zip athena_query.py boto3/ botocore/
+
+2. Deploy with Terraform:
+
+   # Initialize Terraform
+   terraform init
+   
+   # Plan the deployment
+   terraform plan -var="lambda_zip_file=lambda.zip"
+   
+   # Apply the configuration
+   terraform apply -var="lambda_zip_file=lambda.zip"
+
+3. Test the Lambda function:
+
+   # Invoke directly
+   aws lambda invoke \
+     --function-name athena-query-student \
+     --payload '{"query": "SELECT 1 as test"}' \
+     response.json
+   
+   cat response.json
+
+4. View logs in CloudWatch:
+
+   # Stream logs in real-time
+   aws logs tail /aws/lambda/athena-query-student --follow
+
+5. Check function configuration:
+
+   aws lambda get-function \
+     --function-name athena-query-student
+
+========================================
+INSTRUCTIONS
+}
+
+output "iam_role_dependency_warning" {
+  description = "Warning if IAM role file is missing"
+  value       = fileexists("iam_role.tf") ? null : "WARNING: iam_role.tf not found. Lambda may fail if IAM role is not created."
+}
+
+output "zip_file_warning" {
+  description = "Warning if zip file is missing"
+  value       = fileexists(var.lambda_zip_file) ? null : "WARNING: ${var.lambda_zip_file} not found. Create it with: zip ${var.lambda_zip_file} athena_query.py"
+}
+
+# ============================================
+# Terraform Configuration Validation
+# ============================================
+
+# Validate that required files exist
+locals {
+  required_files = {
+    iam_role_tf = fileexists("iam_role.tf")
+    lambda_py   = fileexists("athena_query.py")
+    lambda_zip  = fileexists(var.lambda_zip_file)
+  }
+  
+  all_files_present = alltrue([
+    local.required_files.iam_role_tf,
+    local.required_files.lambda_zip,
+  ])
+}
+
+# Validation check
+resource "terraform_data" "validate_files" {
+  count = local.all_files_present ? 0 : 1
+
+  input = {
+    missing_files = [
+      for key, exists in local.required_files : 
+      key if !exists
+    ]
+  }
+
+  provisioner "local-exec" {
+    command = <<EOT
+      echo "========================================"
+      echo "WARNING: Missing files detected"
+      echo "========================================"
+      echo "Missing: ${join(", ", self.input.missing_files)}"
+      echo ""
+      echo "Please ensure the following files exist:"
+      echo "  - iam_role.tf (run: terraform apply -target=aws_iam_role.athena_lambda)"
+      echo "  - athena_query.py (Python source file)"
+      echo "  - lambda.zip (run: zip lambda.zip athena_query.py)"
+      echo "========================================"
+      exit 0
+    EOT
+  }
+}
+
