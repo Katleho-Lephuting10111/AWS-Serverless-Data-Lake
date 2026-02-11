@@ -13,7 +13,7 @@ import { Loader2, AlertCircle, RefreshCw } from 'lucide-react'
 // API Configuration
 // ============================================
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://api.example.com'
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://shhoo6hhtl.execute-api.eu-west-1.amazonaws.com/dev'
 const API_ENDPOINT = `${API_BASE_URL}/query`
 
 // ============================================

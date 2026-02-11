@@ -15,7 +15,7 @@ interface QueryResult {
 export default function QueryExecutor() {
   const [query, setQuery] = useState('SELECT * FROM users LIMIT 10')
   const [customEndpoint, setCustomEndpoint] = useState(
-    'https://api.example.com/query'
+    'https://shhoo6hhtl.execute-api.eu-west-1.amazonaws.com/dev/query'
   )
 
   const { data, loading, error, execute } = useSqlQuery<QueryResult>({
