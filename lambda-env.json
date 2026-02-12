@@ -1,0 +1,9 @@
+{
+  "Variables": {
+    "DATABASE_NAME": "student_db",
+    "S3_BUCKET": "student-socialmedia-datalake",
+    "RESULTS_PATH": "s3://student-socialmedia-datalake/athena-results/",
+    "MAX_WAIT_TIME": "60"
+  }
+}
+

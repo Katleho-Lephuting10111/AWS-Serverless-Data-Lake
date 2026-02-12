@@ -1,0 +1,14 @@
+{
+  "WorkGroupConfiguration": {
+    "ResultConfiguration": {
+      "OutputLocation": "s3://student-socialmedia-datalake/athena-results/"
+    },
+    "EnforceWorkGroupConfiguration": false,
+    "PublishCloudWatchMetricsEnabled": true,
+    "BytesScannedCutoffPerQuery": 100000000,
+    "RemoveResultConfiguration": false
+  },
+  "Description": "Updated to use student-socialmedia-datalake bucket",
+  "State": "ENABLED"
+}
+

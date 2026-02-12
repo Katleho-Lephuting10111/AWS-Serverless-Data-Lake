@@ -1,0 +1,6 @@
+{
+  "ResultConfigurationUpdates": {
+    "OutputLocation": "s3://student-socialmedia-datalake/athena-results/"
+  }
+}
+
