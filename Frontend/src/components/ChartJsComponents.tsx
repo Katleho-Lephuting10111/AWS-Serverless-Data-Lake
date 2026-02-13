@@ -6,6 +6,10 @@ import {
   LineElement,
   BarElement,
   ArcElement,
+  BarController,
+  PieController,
+  LineController,
+  ScatterController,
   Title,
   Tooltip,
   Legend,
@@ -17,17 +21,21 @@ import { useRef, useEffect } from 'react'
 
 // Register Chart.js components
 ChartJS.register(
+  BarController,
+  BarElement,
+  PieController,
+  ArcElement,
+  LineController,
+  LineElement,
+  ScatterController,
+  PointElement,
   CategoryScale,
   LinearScale,
-  PointElement,
-  LineElement,
-  BarElement,
-  ArcElement,
   Title,
   Tooltip,
   Legend,
   Filler
-)
+);
 
 // ============================================
 // Bar Chart Component

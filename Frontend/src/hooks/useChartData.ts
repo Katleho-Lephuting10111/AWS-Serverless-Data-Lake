@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 // API Configuration
 // ============================================
 
-const API_ENDPOINT = import.meta.env.VITE_API_ENDPOINT || 'https://shhoo6hhtl.execute-api.eu-west-1.amazonaws.com/dev/query'
+const API_ENDPOINT = import.meta.env.VITE_API_ENDPOINT || 'https://mbx9hm69ye.execute-api.eu-west-1.amazonaws.com/dev/query'
 
 // ============================================
 // Type Definitions for API Responses

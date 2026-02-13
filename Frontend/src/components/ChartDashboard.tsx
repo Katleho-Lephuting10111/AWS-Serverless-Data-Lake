@@ -14,9 +14,10 @@ import {
   ResponsiveContainer,
 } from 'recharts'
 import { TrendingUp, Activity, Brain } from 'lucide-react'
+import React, { useState } from 'react'
 
 // Sample data for Usage vs Academic Impact
-const usageAcademicData = [
+const USAGE_ACADEMIC_DATA = [
   { platform: 'Instagram', usage: 8.5, academicImpact: 3.2 },
   { platform: 'TikTok', usage: 9.2, academicImpact: 2.5 },
   { platform: 'YouTube', usage: 7.8, academicImpact: 5.5 },
@@ -27,7 +28,7 @@ const usageAcademicData = [
 ]
 
 // Sample data for Platform Popularity
-const platformPopularityData = [
+const PLATFORM_POPULARITY_DATA = [
   { name: 'Instagram', value: 28, color: '#E1306C' },
   { name: 'TikTok', value: 25, color: '#000000' },
   { name: 'YouTube', value: 22, color: '#FF0000' },
@@ -37,7 +38,7 @@ const platformPopularityData = [
 ]
 
 // Sample data for Sleep vs Mental Health
-const sleepMentalHealthData = [
+const SLEEP_MENTAL_HEALTH_DATA = [
   { sleep: 4, mentalHealth: 3.2, size: 100 },
   { sleep: 4.5, mentalHealth: 3.8, size: 120 },
   { sleep: 5, mentalHealth: 4.1, size: 110 },
@@ -51,11 +52,79 @@ const sleepMentalHealthData = [
   { sleep: 9, mentalHealth: 7.8, size: 160 },
 ]
 
+
 const COLORS = ['#0ea5e9', '#06b6d4', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6']
 
 export default function ChartDashboard() {
+  // Filter state
+  const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>(USAGE_ACADEMIC_DATA.map(d => d.platform))
+  const [usageRange, setUsageRange] = useState<[number, number]>([0, 10])
+  const [impactRange, setImpactRange] = useState<[number, number]>([0, 10])
+  const [sleepRange, setSleepRange] = useState<[number, number]>([4, 9])
+
+  // Filtered data
+  const filteredUsageAcademic = USAGE_ACADEMIC_DATA.filter(d =>
+    selectedPlatforms.includes(d.platform) &&
+    d.usage >= usageRange[0] && d.usage <= usageRange[1] &&
+    d.academicImpact >= impactRange[0] && d.academicImpact <= impactRange[1]
+  )
+  const filteredPlatformPopularity = PLATFORM_POPULARITY_DATA.filter(d =>
+    selectedPlatforms.includes(d.name)
+  )
+  const filteredSleepMental = SLEEP_MENTAL_HEALTH_DATA.filter(d =>
+    d.sleep >= sleepRange[0] && d.sleep <= sleepRange[1]
+  )
+
+  // Unique platforms for dropdown
+  const allPlatforms = USAGE_ACADEMIC_DATA.map(d => d.platform)
+
+  // Handlers
+  const handlePlatformChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const options = Array.from(e.target.selectedOptions, option => option.value)
+    setSelectedPlatforms(options)
+  }
+
   return (
     <div className="space-y-8">
+      {/* Header */}
+      <div>
+        <h1 className="text-3xl font-bold text-gray-900">Analytics Dashboard</h1>
+        <p className="text-gray-600 mt-2">Social Media Impact & Wellness Metrics</p>
+      </div>
+
+      {/* Filters */}
+      <div className="flex flex-wrap gap-6 items-end bg-gray-50 p-4 rounded-lg mb-4">
+        {/* Platform Multi-select */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Platforms</label>
+          <select multiple value={selectedPlatforms} onChange={handlePlatformChange} className="border rounded px-2 py-1 min-w-[120px]">
+            {allPlatforms.map(p => (
+              <option key={p} value={p}>{p}</option>
+            ))}
+          </select>
+        </div>
+        {/* Usage Range Slider */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Usage (hours/day)</label>
+          <input type="range" min={0} max={10} step={0.1} value={usageRange[0]} onChange={e => setUsageRange([+e.target.value, usageRange[1]])} />
+          <input type="range" min={0} max={10} step={0.1} value={usageRange[1]} onChange={e => setUsageRange([usageRange[0], +e.target.value])} />
+          <div className="text-xs text-gray-500">{usageRange[0]} - {usageRange[1]}</div>
+        </div>
+        {/* Academic Impact Range Slider */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Academic Impact</label>
+          <input type="range" min={0} max={10} step={0.1} value={impactRange[0]} onChange={e => setImpactRange([+e.target.value, impactRange[1]])} />
+          <input type="range" min={0} max={10} step={0.1} value={impactRange[1]} onChange={e => setImpactRange([impactRange[0], +e.target.value])} />
+          <div className="text-xs text-gray-500">{impactRange[0]} - {impactRange[1]}</div>
+        </div>
+        {/* Sleep Range Slider */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Sleep (hours/night)</label>
+          <input type="range" min={4} max={9} step={0.1} value={sleepRange[0]} onChange={e => setSleepRange([+e.target.value, sleepRange[1]])} />
+          <input type="range" min={4} max={9} step={0.1} value={sleepRange[1]} onChange={e => setSleepRange([sleepRange[0], +e.target.value])} />
+          <div className="text-xs text-gray-500">{sleepRange[0]} - {sleepRange[1]}</div>
+        </div>
+      </div>
       {/* Header */}
       <div>
         <h1 className="text-3xl font-bold text-gray-900">Analytics Dashboard</h1>
@@ -77,7 +146,7 @@ export default function ChartDashboard() {
           </div>
 
           <ResponsiveContainer width="100%" height={400}>
-            <BarChart data={usageAcademicData} margin={{ top: 20, right: 30, left: 0, bottom: 60 }}>
+            <BarChart data={filteredUsageAcademic} margin={{ top: 20, right: 30, left: 0, bottom: 60 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
               <XAxis
                 dataKey="platform"
@@ -109,11 +178,11 @@ export default function ChartDashboard() {
           <div className="mt-6 grid grid-cols-2 gap-4">
             <div className="p-4 bg-blue-50 rounded-lg">
               <p className="text-sm text-blue-600 font-medium">Highest Usage</p>
-              <p className="text-lg font-bold text-blue-900">TikTok (9.2h)</p>
+              <p className="text-lg font-bold text-blue-900">{filteredUsageAcademic.length ? filteredUsageAcademic.reduce((a, b) => a.usage > b.usage ? a : b).platform + ` (${filteredUsageAcademic.length ? filteredUsageAcademic.reduce((a, b) => a.usage > b.usage ? a : b).usage : ''}h)` : 'N/A'}</p>
             </div>
             <div className="p-4 bg-green-50 rounded-lg">
               <p className="text-sm text-green-600 font-medium">Best Academic Impact</p>
-              <p className="text-lg font-bold text-green-900">LinkedIn (+7.8)</p>
+              <p className="text-lg font-bold text-green-900">{filteredUsageAcademic.length ? filteredUsageAcademic.reduce((a, b) => a.academicImpact > b.academicImpact ? a : b).platform + ` (+${filteredUsageAcademic.length ? filteredUsageAcademic.reduce((a, b) => a.academicImpact > b.academicImpact ? a : b).academicImpact : ''})` : 'N/A'}</p>
             </div>
           </div>
         </div>
@@ -133,7 +202,7 @@ export default function ChartDashboard() {
           <ResponsiveContainer width="100%" height={400}>
             <PieChart>
               <Pie
-                data={platformPopularityData}
+                data={filteredPlatformPopularity}
                 cx="50%"
                 cy="50%"
                 labelLine={false}
@@ -142,7 +211,7 @@ export default function ChartDashboard() {
                 fill="#8884d8"
                 dataKey="value"
               >
-                {platformPopularityData.map((entry, index) => (
+                {filteredPlatformPopularity.map((entry, index) => (
                   <Cell key={`cell-${index}`} fill={entry.color} />
                 ))}
               </Pie>
@@ -151,7 +220,7 @@ export default function ChartDashboard() {
           </ResponsiveContainer>
 
           <div className="mt-6 grid grid-cols-3 gap-3">
-            {platformPopularityData.slice(0, 3).map((platform) => (
+            {filteredPlatformPopularity.slice(0, 3).map((platform) => (
               <div key={platform.name} className="p-3 bg-gray-50 rounded-lg text-center">
                 <p className="text-xs text-gray-600">{platform.name}</p>
                 <p className="text-lg font-bold text-gray-900">{platform.value}%</p>
@@ -202,7 +271,7 @@ export default function ChartDashboard() {
             />
             <Scatter
               name="Mental Health vs Sleep"
-              data={sleepMentalHealthData}
+              data={filteredSleepMental}
               fill="#0ea5e9"
               shape="circle"
             />
@@ -236,17 +305,17 @@ export default function ChartDashboard() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           <div>
             <p className="text-primary-100 text-sm mb-2">Most Used Platform</p>
-            <p className="text-2xl font-bold">TikTok</p>
-            <p className="text-primary-200 text-xs mt-1">9.2 hours daily average</p>
+            <p className="text-2xl font-bold">{filteredUsageAcademic.length ? filteredUsageAcademic.reduce((a, b) => a.usage > b.usage ? a : b).platform : 'N/A'}</p>
+            <p className="text-primary-200 text-xs mt-1">{filteredUsageAcademic.length ? filteredUsageAcademic.reduce((a, b) => a.usage > b.usage ? a : b).usage + ' hours daily average' : ''}</p>
           </div>
           <div>
             <p className="text-primary-100 text-sm mb-2">Best for Academics</p>
-            <p className="text-2xl font-bold">LinkedIn</p>
-            <p className="text-primary-200 text-xs mt-1">+7.8 GPA impact score</p>
+            <p className="text-2xl font-bold">{filteredUsageAcademic.length ? filteredUsageAcademic.reduce((a, b) => a.academicImpact > b.academicImpact ? a : b).platform : 'N/A'}</p>
+            <p className="text-primary-200 text-xs mt-1">{filteredUsageAcademic.length ? '+' + filteredUsageAcademic.reduce((a, b) => a.academicImpact > b.academicImpact ? a : b).academicImpact + ' GPA impact score' : ''}</p>
           </div>
           <div>
             <p className="text-primary-100 text-sm mb-2">Mental Health Factor</p>
-            <p className="text-2xl font-bold">8 hrs Sleep</p>
+            <p className="text-2xl font-bold">{filteredSleepMental.length ? filteredSleepMental.reduce((a, b) => a.mentalHealth > b.mentalHealth ? a : b).sleep + ' hrs Sleep' : 'N/A'}</p>
             <p className="text-primary-200 text-xs mt-1">Optimal for wellbeing</p>
           </div>
         </div>

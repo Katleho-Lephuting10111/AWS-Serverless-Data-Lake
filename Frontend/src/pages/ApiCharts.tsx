@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback } from 'react'
 import { BarChart, PieChart, ScatterChart, LineChart } from '../components/ChartJsComponents'
 import { 
-  useChartData, 
-  transformToBarChartData, 
-  transformToScatterData,
+  // useChartData, // unused
+  // transformToBarChartData, // unused
+  // transformToScatterData, // unused
   CHART_COLORS,
   PLATFORM_COLORS 
 } from '../hooks/useChartData'
@@ -13,7 +13,7 @@ import { Loader2, AlertCircle, RefreshCw } from 'lucide-react'
 // API Configuration
 // ============================================
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://shhoo6hhtl.execute-api.eu-west-1.amazonaws.com/dev'
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://mbx9hm69ye.execute-api.eu-west-1.amazonaws.com/dev'
 const API_ENDPOINT = `${API_BASE_URL}/query`
 
 // ============================================
@@ -36,7 +36,7 @@ interface StudentDataRow {
 interface ChartDataPoint {
   label: string
   value: number
-  color?: string
+  color: string
 }
 
 interface ScatterDataPoint {
