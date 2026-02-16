@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { Menu, X, LayoutDashboard, BarChart3, LineChart, Database, Settings, LogOut, Zap } from 'lucide-react'
+import { Menu, X, LayoutDashboard, LineChart, Activity, Settings, LogOut } from 'lucide-react'
 
 interface LayoutProps {
   children: React.ReactNode
@@ -8,10 +8,8 @@ interface LayoutProps {
 
 const navItems = [
   { path: '/', icon: LayoutDashboard, label: 'Dashboard', exact: true },
-  { path: '/analytics', icon: BarChart3, label: 'Analytics' },
   { path: '/charts', icon: LineChart, label: 'Charts' },
-  { path: '/api-charts', icon: Zap, label: 'API Charts' },
-  { path: '/query', icon: Database, label: 'Query' },
+  { path: '/performance-predictor', icon: Activity, label: 'Performance Predictor' },
   { path: '/settings', icon: Settings, label: 'Settings' },
 ]
 
@@ -35,13 +33,16 @@ export default function Layout({ children }: LayoutProps) {
         } bg-gradient-to-b from-primary-900 to-primary-700 text-white transition-all duration-300 ease-in-out fixed h-screen left-0 top-0 z-50 overflow-hidden`}
       >
         {/* Header */}
-        <div className="flex items-center justify-between p-4">
-          <div className={`font-bold text-xl transition-all ${sidebarOpen ? 'opacity-100' : 'opacity-0 w-0'}`}>
-            DigiHealth
-          </div>
+        <div className={`flex items-center p-4 ${sidebarOpen ? 'justify-between' : 'justify-center'}`}>
+          {sidebarOpen && (
+            <div className="font-bold text-xl">
+              DigiHealth
+            </div>
+          )}
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="p-1 hover:bg-primary-600 rounded-lg transition-colors"
+            className="p-2 hover:bg-primary-600 rounded-lg transition-colors flex-shrink-0"
+            aria-label={sidebarOpen ? 'Close sidebar' : 'Open sidebar'}
           >
             {sidebarOpen ? <X size={20} /> : <Menu size={20} />}
           </button>
