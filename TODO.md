@@ -2,14 +2,14 @@
 
 ## Phase 1: AWS Resources Status ✓
 - [x] 1.1 Lambda function `athena-query-student` exists
-- [x] 1.2 API Gateway `athena-query-api` exists (ID: shhoo6hhtl)
+- [x] 1.2 API Gateway `athena-query-api` exists (ID: mbx9hm69ye)
 - [x] 1.3 Glue database `student_db` exists
 - [x] 1.4 S3 bucket `student-socialmedia-datalake` exists
 - [x] 1.5 Bucket policy applied for Athena access
 
 ## Phase 2: Frontend Configuration ✓
 - [x] 2.1 Created `Frontend/.env.local` with API Gateway URL
-- [x] 2.2 API Endpoint: `https://shhoo6hhtl.execute-api.eu-west-1.amazonaws.com/dev/query`
+- [x] 2.2 API Endpoint: `https://mbx9hm69ye.execute-api.eu-west-1.amazonaws.com/dev/query`
 - [x] 2.3 Updated all frontend files with new API endpoint
   - `Frontend/src/hooks/useChartData.ts`
   - `Frontend/src/pages/ApiCharts.tsx`
@@ -61,14 +61,14 @@
 
 ## API Gateway URL:
 ```
-https://shhoo6hhtl.execute-api.eu-west-1.amazonaws.com/dev/query
+https://mbx9hm69ye.execute-api.eu-west-1.amazonaws.com/dev/query
 ```
 
 ## Quick Test Command:
 ```bash
 # Test API Gateway directly
 curl -X POST \
-  https://shhoo6hhtl.execute-api.eu-west-1.amazonaws.com/dev/query \
+  https://mbx9hm69ye.execute-api.eu-west-1.amazonaws.com/dev/query \
   -H 'Content-Type: application/json' \
   -d '{"query": "SELECT 1 as test"}'
 ```

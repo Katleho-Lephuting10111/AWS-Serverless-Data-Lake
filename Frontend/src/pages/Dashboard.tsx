@@ -1,34 +1,44 @@
-import { useState } from 'react'
-import DashboardSummary from '../components/DashboardSummary'
+import { useMetrics } from '../contexts/MetricsContext'
+import SocialMediaCard from '../components/dashboard-cards/SocialMediaCard'
+import SleepTrackerCard from '../components/dashboard-cards/SleepTrackerCard'
+import MentalHealthCard from '../components/dashboard-cards/MentalHealthCard'
+import ConflictCard from '../components/dashboard-cards/ConflictCard'
+import WeeklySummaryCard from '../components/dashboard-cards/WeeklySummaryCard'
+import WellnessGoalsCard from '../components/dashboard-cards/WellnessGoalsCard'
 
 export default function Dashboard() {
-  // Example data - in a real app, this would come from your backend/state management
-  const [todayMetrics] = useState({
-    socialMediaHours: 4.5,
-    sleepHours: 6.5,
-    conflicts: 2
-  })
-
-  const [weeklyAverages] = useState({
-    avgSocialMediaHours: 5.2,
-    avgSleepHours: 6.8,
-    avgConflicts: 1.5
-  })
-
-  const handleEngagementAction = () => {
-    // This would open a modal or navigate to a logging page
-    alert('Engagement feature coming soon! This would open a mood tracker or goal-setting interface.')
-  }
+  const { metrics, weeklyAverages } = useMetrics()
 
   return (
-    <DashboardSummary
-      socialMediaHours={todayMetrics.socialMediaHours}
-      sleepHours={todayMetrics.sleepHours}
-      conflicts={todayMetrics.conflicts}
-      avgSocialMediaHours={weeklyAverages.avgSocialMediaHours}
-      avgSleepHours={weeklyAverages.avgSleepHours}
-      avgConflicts={weeklyAverages.avgConflicts}
-      onEngagementAction={handleEngagementAction}
-    />
+    <div className="space-y-6">
+      <h1 className="text-3xl font-bold text-gray-900 dark:text-white text-center">
+        Your wellness, your data, your power
+      </h1>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <SocialMediaCard
+        hours={metrics.socialMediaHours}
+        avgHours={weeklyAverages.avgSocialMediaHours}
+      />
+      <SleepTrackerCard
+        hours={metrics.sleepHours}
+        avgHours={weeklyAverages.avgSleepHours}
+      />
+      <MentalHealthCard
+        socialMediaHours={metrics.socialMediaHours}
+        sleepHours={metrics.sleepHours}
+        conflicts={metrics.conflicts}
+      />
+      <ConflictCard
+        count={metrics.conflicts}
+        avgCount={weeklyAverages.avgConflicts}
+      />
+      <WeeklySummaryCard />
+      <WellnessGoalsCard
+        socialMediaHours={metrics.socialMediaHours}
+        sleepHours={metrics.sleepHours}
+        conflicts={metrics.conflicts}
+      />
+      </div>
+    </div>
   )
 }

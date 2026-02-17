@@ -72,7 +72,7 @@ SELECT * FROM student_social_media_usage LIMIT 10
 |---------|---------------|
 | **Resources** | Should have `/query` resource with POST method |
 | **Stages** | Should have `dev` stage |
-| **Stage details** | Invoke URL should be: `https://shhoo6hhtl.execute-api.eu-west-1.amazonaws.com/dev` |
+| **Stage details** | Invoke URL should be: `https://mbx9hm69ye.execute-api.eu-west-1.amazonaws.com/dev` |
 | **CORS** | OPTIONS method should be configured |
 
 **Expected:** API is deployed with correct endpoint
@@ -114,11 +114,11 @@ From your terminal:
 ```bash
 # Windows (PowerShell)
 $body = '{"query": "SELECT 1 as test"}'
-Invoke-RestMethod -Uri "https://shhoo6hhtl.execute-api.eu-west-1.amazonaws.com/dev/query" -Method Post -ContentType "application/json" -Body $body
+Invoke-RestMethod -Uri "https://mbx9hm69ye.execute-api.eu-west-1.amazonaws.com/dev/query" -Method Post -ContentType "application/json" -Body $body
 
 # Or using curl
 curl -X POST \
-  https://shhoo6hhtl.execute-api.eu-west-1.amazonaws.com/dev/query \
+  https://mbx9hm69ye.execute-api.eu-west-1.amazonaws.com/dev/query \
   -H 'Content-Type: application/json' \
   -d '{"query": "SELECT 1 as test"}'
 ```
@@ -187,7 +187,7 @@ curl -X POST \
          ▼
 ┌─────────────────┐
 │  API Gateway    │  ← HTTP endpoint
-│  (shhoo6hhtl)   │
+│  (mbx9hm69ye)   │
 └────────┬────────┘
          │
          ▼

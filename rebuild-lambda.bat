@@ -83,6 +83,6 @@ echo === Lambda Update Complete ===
 echo.
 echo Next steps:
 echo   1. Test the API: test-api.bat
-echo   2. Or test directly in browser: https://shhoo6hhtl.execute-api.eu-west-1.amazonaws.com/dev/query
+echo   2. Or test directly in browser: https://mbx9hm69ye.execute-api.eu-west-1.amazonaws.com/dev/query
 pause
 

@@ -184,7 +184,8 @@ resource "aws_iam_policy" "lambda_policy" {
           "s3:GetObject",
           "s3:PutObject",
           "s3:DeleteObject",
-          "s3:ListBucket"
+          "s3:ListBucket",
+          "s3:GetBucketLocation"
         ],
         Resource = [
           "arn:aws:s3:::${var.bucket_name}",
@@ -229,8 +230,8 @@ resource "aws_iam_role_policy_attachment" "lambda_policy_attach" {
 # Data source to get the hash of the zip file for change detection
 data "archive_file" "lambda_zip" {
   type        = "zip"
-  source_file = "${path.module}/lambda.zip"
-  output_path = "${path.module}/lambda-output.zip"
+  source_file = "${path.module}/index.py"
+  output_path = "${path.module}/lambda.zip"
 }
 
 # Lambda function
@@ -239,7 +240,7 @@ resource "aws_lambda_function" "athena_query_student" {
   function_name    = "athena-query-student"
   role             = aws_iam_role.lambda_role.arn
   handler          = "index.handler"
-  runtime          = "python3.9"
+  runtime          = "python3.12"
   source_code_hash = data.archive_file.lambda_zip.output_base64sha256
   timeout          = 60
   memory_size      = 256

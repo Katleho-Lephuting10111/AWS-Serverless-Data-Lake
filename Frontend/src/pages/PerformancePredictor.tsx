@@ -1,21 +1,8 @@
 import { useState } from 'react'
+import { useMetrics } from '../contexts/MetricsContext'
 
-interface PerformancePredictorProps {
-  socialMediaHours?: number
-  sleepHours?: number
-  conflicts?: number
-}
-
-export default function PerformancePredictor({
-  socialMediaHours = 0,
-  sleepHours = 0,
-  conflicts = 0,
-}: PerformancePredictorProps) {
-  const [inputs, setInputs] = useState({
-    socialMediaHours,
-    sleepHours,
-    conflicts,
-  })
+export default function PerformancePredictor() {
+  const { metrics, updateMetrics } = useMetrics()
   const [showPredictions, setShowPredictions] = useState(false)
   const [predictions, setPredictions] = useState({
     academic: '',
@@ -52,15 +39,14 @@ export default function PerformancePredictor({
   }
 
   const handleInputChange = (field: string, value: string) => {
-    setInputs(prev => ({
-      ...prev,
+    updateMetrics({
       [field]: parseFloat(value) || 0
-    }))
+    })
   }
 
   const handlePredict = () => {
-    const academicPrediction = getAcademicPrediction(inputs.socialMediaHours, inputs.sleepHours)
-    const mentalHealthPrediction = getMentalHealthPrediction(inputs.socialMediaHours, inputs.sleepHours, inputs.conflicts)
+    const academicPrediction = getAcademicPrediction(metrics.socialMediaHours, metrics.sleepHours)
+    const mentalHealthPrediction = getMentalHealthPrediction(metrics.socialMediaHours, metrics.sleepHours, metrics.conflicts)
 
     setPredictions({
       academic: academicPrediction,
@@ -101,16 +87,16 @@ export default function PerformancePredictor({
   const getRecommendations = (academic: string, mentalHealth: string): string[] => {
     const recommendations: string[] = []
 
-    if (inputs.socialMediaHours > 5) {
+    if (metrics.socialMediaHours > 5) {
       recommendations.push("Limit social media to 3 hours or less daily through app timers or scheduled breaks")
     }
-    if (inputs.sleepHours < 7) {
+    if (metrics.sleepHours < 7) {
       recommendations.push("Aim for 7-9 hours of sleep by establishing a consistent bedtime routine")
     }
-    if (inputs.conflicts >= 2) {
+    if (metrics.conflicts >= 2) {
       recommendations.push("Reduce social media conflicts by unfollowing triggering accounts or using curated feeds")
     }
-    if (inputs.socialMediaHours > 3 && inputs.sleepHours < 8) {
+    if (metrics.socialMediaHours > 3 && metrics.sleepHours < 8) {
       recommendations.push("Replace evening screen time with relaxing activities to improve sleep quality")
     }
     if (academic.includes('High risk') || mentalHealth.includes('Critical')) {
@@ -140,7 +126,7 @@ export default function PerformancePredictor({
               type="number"
               step="0.5"
               min="0"
-              value={inputs.socialMediaHours}
+              value={metrics.socialMediaHours}
               onChange={(e) => handleInputChange('socialMediaHours', e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
             />
@@ -154,7 +140,7 @@ export default function PerformancePredictor({
               type="number"
               step="0.5"
               min="0"
-              value={inputs.sleepHours}
+              value={metrics.sleepHours}
               onChange={(e) => handleInputChange('sleepHours', e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
             />
@@ -167,7 +153,7 @@ export default function PerformancePredictor({
             <input
               type="number"
               min="0"
-              value={inputs.conflicts}
+              value={metrics.conflicts}
               onChange={(e) => handleInputChange('conflicts', e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
             />

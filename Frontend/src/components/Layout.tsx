@@ -1,10 +1,10 @@
-import { useState } from 'react'
-import { Link, useLocation } from 'react-router-dom'
-import { Menu, X, LayoutDashboard, LineChart, Activity, Settings, LogOut } from 'lucide-react'
-
-interface LayoutProps {
-  children: React.ReactNode
-}
+import { useState, useRef } from 'react'
+import { Link, useLocation, useNavigate, Outlet } from 'react-router-dom'
+import { Menu, X, LayoutDashboard, LineChart, Activity, Settings, LogOut, Bell, Info } from 'lucide-react'
+import { useAuth } from '../contexts/AuthContext'
+import { useNotifications } from '../contexts/NotificationsContext'
+import NotificationsDropdown from './NotificationsDropdown'
+import AboutModal from './AboutModal'
 
 const navItems = [
   { path: '/', icon: LayoutDashboard, label: 'Dashboard', exact: true },
@@ -13,9 +13,20 @@ const navItems = [
   { path: '/settings', icon: Settings, label: 'Settings' },
 ]
 
-export default function Layout({ children }: LayoutProps) {
+export default function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(true)
+  const [notificationsOpen, setNotificationsOpen] = useState(false)
+  const [aboutOpen, setAboutOpen] = useState(false)
+  const notificationButtonRef = useRef<HTMLButtonElement>(null)
   const location = useLocation()
+  const navigate = useNavigate()
+  const { user, logout } = useAuth()
+  const { unreadCount } = useNotifications()
+
+  const handleLogout = () => {
+    logout()
+    navigate('/login')
+  }
 
   const isActive = (path: string, exact: boolean = false) => {
     if (exact) {
@@ -25,12 +36,12 @@ export default function Layout({ children }: LayoutProps) {
   }
 
   return (
-    <div className="flex h-screen bg-gray-100">
+    <div className="flex h-screen bg-gray-100 dark:bg-gray-900">
       {/* Sidebar */}
       <aside
         className={`${
           sidebarOpen ? 'w-64' : 'w-20'
-        } bg-gradient-to-b from-primary-900 to-primary-700 text-white transition-all duration-300 ease-in-out fixed h-screen left-0 top-0 z-50 overflow-hidden`}
+        } bg-gradient-to-b from-primary-900 to-primary-700 dark:from-gray-800 dark:to-gray-900 text-white transition-all duration-300 ease-in-out fixed h-screen left-0 top-0 z-50 overflow-hidden`}
       >
         {/* Header */}
         <div className={`flex items-center p-4 ${sidebarOpen ? 'justify-between' : 'justify-center'}`}>
@@ -74,6 +85,7 @@ export default function Layout({ children }: LayoutProps) {
         {/* Logout */}
         <div className="p-4 border-t border-primary-600">
           <button
+            onClick={handleLogout}
             className="flex items-center gap-3 w-full px-4 py-3 rounded-lg text-primary-100 hover:bg-primary-600 transition-all"
             title="Logout"
           >
@@ -86,27 +98,38 @@ export default function Layout({ children }: LayoutProps) {
       {/* Main Content */}
       <div className={`flex-1 flex flex-col transition-all duration-300 ${sidebarOpen ? 'ml-64' : 'ml-20'}`}>
         {/* Top Header */}
-        <header className="bg-white shadow-sm">
+        <header className="bg-white dark:bg-gray-800 shadow-sm">
           <div className="flex items-center justify-between px-6 py-4">
-            <h1 className="text-2xl font-bold text-gray-900">DigiHealth</h1>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">DigiHealth</h1>
             <div className="flex items-center gap-4">
-              <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
-                <svg
-                  className="w-6 h-6 text-gray-600"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
-                  />
-                </svg>
+              <button
+                onClick={() => setAboutOpen(true)}
+                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                title="About DigiHealth"
+              >
+                <Info className="w-6 h-6 text-gray-600 dark:text-gray-400" />
               </button>
+              <div className="relative">
+                <button
+                  ref={notificationButtonRef}
+                  onClick={() => setNotificationsOpen(!notificationsOpen)}
+                  className="relative p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                >
+                  <Bell className="w-6 h-6 text-gray-600 dark:text-gray-400" />
+                  {unreadCount > 0 && (
+                    <span className="absolute top-1 right-1 w-5 h-5 bg-red-500 rounded-full text-white text-xs flex items-center justify-center font-medium">
+                      {unreadCount > 9 ? '9+' : unreadCount}
+                    </span>
+                  )}
+                </button>
+                <NotificationsDropdown
+                  isOpen={notificationsOpen}
+                  onClose={() => setNotificationsOpen(false)}
+                  anchorRef={notificationButtonRef}
+                />
+              </div>
               <div className="w-10 h-10 bg-primary-500 rounded-full flex items-center justify-center text-white font-bold">
-                U
+                {user?.name.charAt(0).toUpperCase() || 'U'}
               </div>
             </div>
           </div>
@@ -115,7 +138,7 @@ export default function Layout({ children }: LayoutProps) {
         {/* Main Content Area */}
         <main className="flex-1 overflow-auto">
           <div className="p-6">
-            {children}
+            <Outlet />
           </div>
         </main>
       </div>
@@ -127,6 +150,9 @@ export default function Layout({ children }: LayoutProps) {
           onClick={() => setSidebarOpen(false)}
         />
       )}
+
+      {/* About Modal */}
+      <AboutModal isOpen={aboutOpen} onClose={() => setAboutOpen(false)} />
     </div>
   )
 }

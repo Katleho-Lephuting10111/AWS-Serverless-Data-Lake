@@ -6,7 +6,7 @@ $ErrorActionPreference = "Stop"
 Write-Host "=== Configuring CORS for API Gateway ===" -ForegroundColor Cyan
 Write-Host ""
 
-$apiId = "shhoo6hhtl"
+$apiId = "mbx9hm69ye"
 $region = "eu-west-1"
 $resourceId = (aws apigateway get-resources --rest-api-id $apiId --query 'items[?pathPart==`query`].id' --output text)
 

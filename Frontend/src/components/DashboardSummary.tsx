@@ -105,65 +105,65 @@ export default function DashboardSummary({
   return (
     <div className="max-w-6xl mx-auto space-y-6">
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-        <p className="text-sm text-gray-500">Your wellness overview</p>
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Dashboard</h1>
+        <p className="text-sm text-gray-500 dark:text-gray-400">Your wellness overview</p>
       </div>
 
       {/* Snapshot Card */}
-      <div className="bg-gradient-to-br from-primary-50 to-primary-100 rounded-lg shadow-lg p-6 border-l-4 border-primary-500">
-        <h2 className="text-2xl font-bold text-gray-900 mb-4 flex items-center">
+      <div className="bg-gradient-to-br from-primary-50 to-primary-100 dark:from-primary-900/20 dark:to-primary-800/20 rounded-lg shadow-lg p-6 border-l-4 border-primary-500">
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4 flex items-center">
           <TrendingUp className="mr-2" size={24} />
           Today's Snapshot
         </h2>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-          <div className="bg-white rounded-lg p-4 shadow-sm">
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm">
             <div className="flex items-center mb-2">
-              <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center mr-3">
-                <Users className="text-blue-600" size={20} />
+              <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center mr-3">
+                <Users className="text-blue-600 dark:text-blue-400" size={20} />
               </div>
               <div>
-                <p className="text-xs text-gray-500">Social Media</p>
-                <p className="text-2xl font-bold text-gray-900">{socialMediaHours} hrs</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Social Media</p>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">{socialMediaHours} hrs</p>
               </div>
             </div>
           </div>
 
-          <div className="bg-white rounded-lg p-4 shadow-sm">
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm">
             <div className="flex items-center mb-2">
-              <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center mr-3">
-                <Moon className="text-purple-600" size={20} />
+              <div className="w-10 h-10 bg-purple-100 dark:bg-purple-900/30 rounded-full flex items-center justify-center mr-3">
+                <Moon className="text-purple-600 dark:text-purple-400" size={20} />
               </div>
               <div>
-                <p className="text-xs text-gray-500">Sleep Hours</p>
-                <p className="text-2xl font-bold text-gray-900">{sleepHours} hrs</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Sleep Hours</p>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">{sleepHours} hrs</p>
               </div>
             </div>
           </div>
 
-          <div className="bg-white rounded-lg p-4 shadow-sm">
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm">
             <div className="flex items-center mb-2">
-              <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center mr-3">
-                <span className="text-red-600 font-bold text-lg">!</span>
+              <div className="w-10 h-10 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mr-3">
+                <span className="text-red-600 dark:text-red-400 font-bold text-lg">!</span>
               </div>
               <div>
-                <p className="text-xs text-gray-500">Conflicts</p>
-                <p className="text-2xl font-bold text-gray-900">{conflicts}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Conflicts</p>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">{conflicts}</p>
               </div>
             </div>
           </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="bg-white rounded-lg p-4 shadow-sm">
-            <h3 className="text-sm font-semibold text-gray-700 mb-2">Academic Performance</h3>
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm">
+            <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Academic Performance</h3>
             <p className={`font-medium ${getStatusColor(academicPrediction)}`}>
               {academicPrediction}
             </p>
           </div>
 
-          <div className="bg-white rounded-lg p-4 shadow-sm">
-            <h3 className="text-sm font-semibold text-gray-700 mb-2">Mental Health Status</h3>
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm">
+            <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Mental Health Status</h3>
             <p className={`font-medium ${getStatusColor(mentalHealthPrediction)}`}>
               {mentalHealthPrediction}
             </p>
@@ -173,8 +173,8 @@ export default function DashboardSummary({
 
       {/* Weekly Digest */}
       {getWeeklySummary() && (
-        <div className="bg-white rounded-lg shadow-md p-6 border-l-4 border-blue-500">
-          <h2 className="text-xl font-bold text-gray-900 mb-3 flex items-center">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 border-l-4 border-blue-500">
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-3 flex items-center">
             <svg className="mr-2" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor">
               <rect x="3" y="4" width="18" height="18" rx="2" ry="2" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
               <line x1="16" y1="2" x2="16" y2="6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -183,17 +183,17 @@ export default function DashboardSummary({
             </svg>
             Weekly Digest
           </h2>
-          <p className="text-gray-700 leading-relaxed">{getWeeklySummary()}</p>
+          <p className="text-gray-700 dark:text-gray-300 leading-relaxed">{getWeeklySummary()}</p>
         </div>
       )}
 
       {/* Highlight Insight */}
-      <div className="bg-gradient-to-r from-yellow-50 to-orange-50 rounded-lg shadow-md p-6 border-l-4 border-yellow-500">
-        <h2 className="text-xl font-bold text-gray-900 mb-3 flex items-center">
-          <Lightbulb className="mr-2 text-yellow-600" size={24} />
+      <div className="bg-gradient-to-r from-yellow-50 to-orange-50 dark:from-yellow-900/20 dark:to-orange-900/20 rounded-lg shadow-md p-6 border-l-4 border-yellow-500">
+        <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-3 flex items-center">
+          <Lightbulb className="mr-2 text-yellow-600 dark:text-yellow-400" size={24} />
           Insight
         </h2>
-        <p className="text-gray-800 italic text-lg leading-relaxed">
+        <p className="text-gray-800 dark:text-gray-200 italic text-lg leading-relaxed">
           "{insights[currentInsightIndex]}"
         </p>
         <div className="mt-4 flex space-x-1">
@@ -201,7 +201,7 @@ export default function DashboardSummary({
             <div
               key={index}
               className={`h-1.5 rounded-full transition-all ${
-                index === currentInsightIndex ? 'w-8 bg-yellow-600' : 'w-1.5 bg-yellow-300'
+                index === currentInsightIndex ? 'w-8 bg-yellow-600 dark:bg-yellow-400' : 'w-1.5 bg-yellow-300 dark:bg-yellow-700'
               }`}
             />
           ))}
@@ -209,12 +209,12 @@ export default function DashboardSummary({
       </div>
 
       {/* Engagement Prompt */}
-      <div className="bg-white rounded-lg shadow-md p-6 border-l-4 border-green-500">
-        <h2 className="text-xl font-bold text-gray-900 mb-3 flex items-center">
-          <Target className="mr-2 text-green-600" size={24} />
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 border-l-4 border-green-500">
+        <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-3 flex items-center">
+          <Target className="mr-2 text-green-600 dark:text-green-400" size={24} />
           Engagement
         </h2>
-        <p className="text-gray-700 mb-4">
+        <p className="text-gray-700 dark:text-gray-300 mb-4">
           Take action to improve your wellness and track your progress.
         </p>
         <div className="flex flex-wrap gap-3">
