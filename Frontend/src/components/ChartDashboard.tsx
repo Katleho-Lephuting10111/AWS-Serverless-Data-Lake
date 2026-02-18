@@ -15,17 +15,9 @@ import {
 } from 'recharts'
 import { TrendingUp, Activity, Brain } from 'lucide-react'
 import React, { useState } from 'react'
+import { useBarChartData, usePieChartData, useScatterChartData } from '../hooks/useChartData'
 
-// Sample data for Usage vs Academic Impact
-const USAGE_ACADEMIC_DATA = [
-  { platform: 'Instagram', usage: 8.5, academicImpact: 3.2 },
-  { platform: 'TikTok', usage: 9.2, academicImpact: 2.5 },
-  { platform: 'YouTube', usage: 7.8, academicImpact: 5.5 },
-  { platform: 'Twitter', usage: 6.3, academicImpact: 4.2 },
-  { platform: 'Facebook', usage: 4.5, academicImpact: 6.1 },
-  { platform: 'LinkedIn', usage: 5.1, academicImpact: 7.8 },
-  { platform: 'Reddit', usage: 6.9, academicImpact: 6.5 },
-]
+// Usage vs Academic Impact chart now uses backend data
 
 // Sample data for Platform Popularity
 const PLATFORM_POPULARITY_DATA = [
@@ -55,28 +47,31 @@ const SLEEP_MENTAL_HEALTH_DATA = [
 
 const COLORS = ['#0ea5e9', '#06b6d4', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6']
 
-export default function ChartDashboard() {
-  // Filter state
-  const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>(USAGE_ACADEMIC_DATA.map(d => d.platform))
+  // Fetch chart data from backend
+  const { data: usageAcademicData, loading: loadingBar, error: errorBar } = useBarChartData('student_social_media_usage')
+  const { data: platformPopularityData, loading: loadingPie, error: errorPie } = usePieChartData('student_platform_popularity')
+  const { data: sleepMentalHealthData, loading: loadingScatter, error: errorScatter } = useScatterChartData('student_sleep_mental_health')
+  const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>([])
   const [usageRange, setUsageRange] = useState<[number, number]>([0, 10])
   const [impactRange, setImpactRange] = useState<[number, number]>([0, 10])
   const [sleepRange, setSleepRange] = useState<[number, number]>([4, 9])
 
   // Filtered data
-  const filteredUsageAcademic = USAGE_ACADEMIC_DATA.filter(d =>
-    selectedPlatforms.includes(d.platform) &&
-    d.usage >= usageRange[0] && d.usage <= usageRange[1] &&
-    d.academicImpact >= impactRange[0] && d.academicImpact <= impactRange[1]
+  const filteredUsageAcademic = (usageAcademicData || []).filter(d =>
+    (!selectedPlatforms.length || selectedPlatforms.includes(d.label)) &&
+    d.value >= usageRange[0] && d.value <= usageRange[1]
+    // If academicImpact exists, filter as well
+    // d.academicImpact >= impactRange[0] && d.academicImpact <= impactRange[1]
   )
-  const filteredPlatformPopularity = PLATFORM_POPULARITY_DATA.filter(d =>
-    selectedPlatforms.includes(d.name)
+  const filteredPlatformPopularity = (platformPopularityData || []).filter(d =>
+    (!selectedPlatforms.length || selectedPlatforms.includes(d.label))
   )
-  const filteredSleepMental = SLEEP_MENTAL_HEALTH_DATA.filter(d =>
-    d.sleep >= sleepRange[0] && d.sleep <= sleepRange[1]
+  const filteredSleepMental = (sleepMentalHealthData || []).filter(d =>
+    d.x >= sleepRange[0] && d.x <= sleepRange[1]
   )
 
   // Unique platforms for dropdown
-  const allPlatforms = USAGE_ACADEMIC_DATA.map(d => d.platform)
+  const allPlatforms = (usageAcademicData || []).map(d => d.label)
 
   // Handlers
   const handlePlatformChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -133,7 +128,7 @@ export default function ChartDashboard() {
 
       {/* Charts Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Chart 1: Usage vs Academic Impact - Bar Chart */}
+        {/* Chart 1: Usage vs Academic Impact - Bar Chart (connected to backend) */}
         <div className="bg-white p-8 rounded-lg shadow-sm hover:shadow-md transition-shadow">
           <div className="flex items-center gap-3 mb-6">
             <div className="bg-blue-100 p-2 rounded-lg">
@@ -145,49 +140,46 @@ export default function ChartDashboard() {
             </div>
           </div>
 
-          <ResponsiveContainer width="100%" height={400}>
-            <BarChart data={filteredUsageAcademic} margin={{ top: 20, right: 30, left: 0, bottom: 60 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-              <XAxis
-                dataKey="platform"
-                angle={-45}
-                textAnchor="end"
-                height={80}
-                tick={{ fontSize: 12 }}
-              />
-              <YAxis label={{ value: 'Score (0-10)', angle: -90, position: 'insideLeft' }} />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: '#fff',
-                  border: '1px solid #ccc',
-                  borderRadius: '8px',
-                  padding: '8px',
-                }}
-              />
-              <Legend />
-              <Bar dataKey="usage" fill="#0ea5e9" name="Usage Hours/Day" radius={[8, 8, 0, 0]} />
-              <Bar
-                dataKey="academicImpact"
-                fill="#10b981"
-                name="Academic Impact (GPA)"
-                radius={[8, 8, 0, 0]}
-              />
-            </BarChart>
-          </ResponsiveContainer>
+          {loadingBar && <div className="text-blue-600">Loading chart data...</div>}
+          {errorBar && <div className="text-red-600">Error loading chart: {errorBar.message}</div>}
+
+          {!loadingBar && !errorBar && (
+            <ResponsiveContainer width="100%" height={400}>
+              <BarChart data={filteredUsageAcademic} margin={{ top: 20, right: 30, left: 0, bottom: 60 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                <XAxis
+                  dataKey="label"
+                  angle={-45}
+                  textAnchor="end"
+                  height={80}
+                  tick={{ fontSize: 12 }}
+                />
+                <YAxis label={{ value: 'Score (0-10)', angle: -90, position: 'insideLeft' }} />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: '#fff',
+                    border: '1px solid #ccc',
+                    borderRadius: '8px',
+                    padding: '8px',
+                  }}
+                />
+                <Legend />
+                <Bar dataKey="value" fill="#0ea5e9" name="Usage Hours/Day" radius={[8, 8, 0, 0]} />
+                {/* If academicImpact is available, add another Bar */}
+              </BarChart>
+            </ResponsiveContainer>
+          )}
 
           <div className="mt-6 grid grid-cols-2 gap-4">
             <div className="p-4 bg-blue-50 rounded-lg">
               <p className="text-sm text-blue-600 font-medium">Highest Usage</p>
-              <p className="text-lg font-bold text-blue-900">{filteredUsageAcademic.length ? filteredUsageAcademic.reduce((a, b) => a.usage > b.usage ? a : b).platform + ` (${filteredUsageAcademic.length ? filteredUsageAcademic.reduce((a, b) => a.usage > b.usage ? a : b).usage : ''}h)` : 'N/A'}</p>
+              <p className="text-lg font-bold text-blue-900">{filteredUsageAcademic.length ? filteredUsageAcademic.reduce((a, b) => a.value > b.value ? a : b).label + ` (${filteredUsageAcademic.length ? filteredUsageAcademic.reduce((a, b) => a.value > b.value ? a : b).value : ''}h)` : 'N/A'}</p>
             </div>
-            <div className="p-4 bg-green-50 rounded-lg">
-              <p className="text-sm text-green-600 font-medium">Best Academic Impact</p>
-              <p className="text-lg font-bold text-green-900">{filteredUsageAcademic.length ? filteredUsageAcademic.reduce((a, b) => a.academicImpact > b.academicImpact ? a : b).platform + ` (+${filteredUsageAcademic.length ? filteredUsageAcademic.reduce((a, b) => a.academicImpact > b.academicImpact ? a : b).academicImpact : ''})` : 'N/A'}</p>
-            </div>
+            {/* Academic Impact summary can be added if backend provides it */}
           </div>
         </div>
 
-        {/* Chart 2: Platform Popularity - Pie Chart */}
+        {/* Chart 2: Platform Popularity - Pie Chart (connected to backend) */}
         <div className="bg-white p-8 rounded-lg shadow-sm hover:shadow-md transition-shadow">
           <div className="flex items-center gap-3 mb-6">
             <div className="bg-purple-100 p-2 rounded-lg">
@@ -199,30 +191,34 @@ export default function ChartDashboard() {
             </div>
           </div>
 
-          <ResponsiveContainer width="100%" height={400}>
-            <PieChart>
-              <Pie
-                data={filteredPlatformPopularity}
-                cx="50%"
-                cy="50%"
-                labelLine={false}
-                label={({ name, value }) => `${name}: ${value}%`}
-                outerRadius={120}
-                fill="#8884d8"
-                dataKey="value"
-              >
-                {filteredPlatformPopularity.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={entry.color} />
-                ))}
-              </Pie>
-              <Tooltip formatter={(value) => `${value}%`} />
-            </PieChart>
-          </ResponsiveContainer>
+          {loadingPie && <div className="text-purple-600">Loading chart data...</div>}
+          {errorPie && <div className="text-red-600">Error loading chart: {errorPie.message}</div>}
+          {!loadingPie && !errorPie && (
+            <ResponsiveContainer width="100%" height={400}>
+              <PieChart>
+                <Pie
+                  data={filteredPlatformPopularity}
+                  cx="50%"
+                  cy="50%"
+                  labelLine={false}
+                  label={({ label, value }) => `${label}: ${value}%`}
+                  outerRadius={120}
+                  fill="#8884d8"
+                  dataKey="value"
+                >
+                  {filteredPlatformPopularity.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip formatter={(value) => `${value}%`} />
+              </PieChart>
+            </ResponsiveContainer>
+          )}
 
           <div className="mt-6 grid grid-cols-3 gap-3">
             {filteredPlatformPopularity.slice(0, 3).map((platform) => (
-              <div key={platform.name} className="p-3 bg-gray-50 rounded-lg text-center">
-                <p className="text-xs text-gray-600">{platform.name}</p>
+              <div key={platform.label} className="p-3 bg-gray-50 rounded-lg text-center">
+                <p className="text-xs text-gray-600">{platform.label}</p>
                 <p className="text-lg font-bold text-gray-900">{platform.value}%</p>
               </div>
             ))}
@@ -230,7 +226,7 @@ export default function ChartDashboard() {
         </div>
       </div>
 
-      {/* Full Width Chart: Sleep vs Mental Health - Scatter Plot */}
+      {/* Full Width Chart: Sleep vs Mental Health - Scatter Plot (connected to backend) */}
       <div className="bg-white p-8 rounded-lg shadow-sm hover:shadow-md transition-shadow">
         <div className="flex items-center gap-3 mb-6">
           <div className="bg-green-100 p-2 rounded-lg">
@@ -244,78 +240,62 @@ export default function ChartDashboard() {
           </div>
         </div>
 
-        <ResponsiveContainer width="100%" height={400}>
-          <ScatterChart margin={{ top: 20, right: 30, bottom: 20, left: 20 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-            <XAxis
-              dataKey="sleep"
-              name="Hours of Sleep"
-              type="number"
-              label={{ value: 'Hours of Sleep per Night', position: 'insideBottomRight', offset: -10 }}
-            />
-            <YAxis
-              dataKey="mentalHealth"
-              name="Mental Health Score"
-              label={{ value: 'Mental Wellness (0-10)', angle: -90, position: 'insideLeft' }}
-            />
-            <Tooltip
-              cursor={{ strokeDasharray: '3 3' }}
-              contentStyle={{
-                backgroundColor: '#fff',
-                border: '1px solid #ccc',
-                borderRadius: '8px',
-                padding: '8px',
-              }}
-              formatter={(value) => value.toFixed(1)}
-              labelFormatter={(value) => `Sleep: ${value}h`}
-            />
-            <Scatter
-              name="Mental Health vs Sleep"
-              data={filteredSleepMental}
-              fill="#0ea5e9"
-              shape="circle"
-            />
-          </ScatterChart>
-        </ResponsiveContainer>
-
-        <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="p-6 bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg border border-blue-200">
-            <p className="text-sm text-blue-600 font-medium mb-2">Optimal Sleep Duration</p>
-            <p className="text-3xl font-bold text-blue-900">7-8 Hours</p>
-            <p className="text-sm text-blue-700 mt-2">Associated with highest mental wellness</p>
-          </div>
-
-          <div className="p-6 bg-gradient-to-br from-green-50 to-green-100 rounded-lg border border-green-200">
-            <p className="text-sm text-green-600 font-medium mb-2">Correlation Strength</p>
-            <p className="text-3xl font-bold text-green-900">0.89</p>
-            <p className="text-sm text-green-700 mt-2">Strong positive correlation detected</p>
-          </div>
-
-          <div className="p-6 bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg border border-purple-200">
-            <p className="text-sm text-purple-600 font-medium mb-2">Recommended Action</p>
-            <p className="text-lg font-bold text-purple-900">Prioritize Sleep</p>
-            <p className="text-sm text-purple-700 mt-2">Improving sleep quality improves wellness</p>
-          </div>
-        </div>
+        {loadingScatter && <div className="text-green-600">Loading chart data...</div>}
+        {errorScatter && <div className="text-red-600">Error loading chart: {errorScatter.message}</div>}
+        {!loadingScatter && !errorScatter && (
+          <ResponsiveContainer width="100%" height={400}>
+            <ScatterChart margin={{ top: 20, right: 30, bottom: 20, left: 20 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+              <XAxis
+                dataKey="x"
+                name="Hours of Sleep"
+                type="number"
+                label={{ value: 'Hours of Sleep per Night', position: 'insideBottomRight', offset: -10 }}
+              />
+              <YAxis
+                dataKey="y"
+                name="Mental Health Score"
+                label={{ value: 'Mental Wellness (0-10)', angle: -90, position: 'insideLeft' }}
+              />
+              <Tooltip
+                cursor={{ strokeDasharray: '3 3' }}
+                contentStyle={{
+                  backgroundColor: '#fff',
+                  border: '1px solid #ccc',
+                  borderRadius: '8px',
+                  padding: '8px',
+                }}
+                formatter={(value) => typeof value === 'number' ? value.toFixed(1) : value}
+                labelFormatter={(value) => `Sleep: ${value}h`}
+              />
+              <Scatter
+                name="Mental Health vs Sleep"
+                data={filteredSleepMental}
+                fill="#0ea5e9"
+                shape="circle"
+              />
+            </ScatterChart>
+          </ResponsiveContainer>
+        )}
       </div>
 
-      {/* Summary Stats */}
+      {/* Summary Stats (live data) */}
       <div className="bg-gradient-to-r from-primary-600 to-primary-800 rounded-lg p-8 text-white">
         <h3 className="text-2xl font-bold mb-6">Key Insights</h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           <div>
             <p className="text-primary-100 text-sm mb-2">Most Used Platform</p>
-            <p className="text-2xl font-bold">{filteredUsageAcademic.length ? filteredUsageAcademic.reduce((a, b) => a.usage > b.usage ? a : b).platform : 'N/A'}</p>
-            <p className="text-primary-200 text-xs mt-1">{filteredUsageAcademic.length ? filteredUsageAcademic.reduce((a, b) => a.usage > b.usage ? a : b).usage + ' hours daily average' : ''}</p>
+            <p className="text-2xl font-bold">{filteredUsageAcademic.length ? filteredUsageAcademic.reduce((a, b) => a.value > b.value ? a : b).label : 'N/A'}</p>
+            <p className="text-primary-200 text-xs mt-1">{filteredUsageAcademic.length ? filteredUsageAcademic.reduce((a, b) => a.value > b.value ? a : b).value + ' hours daily average' : ''}</p>
           </div>
           <div>
             <p className="text-primary-100 text-sm mb-2">Best for Academics</p>
-            <p className="text-2xl font-bold">{filteredUsageAcademic.length ? filteredUsageAcademic.reduce((a, b) => a.academicImpact > b.academicImpact ? a : b).platform : 'N/A'}</p>
-            <p className="text-primary-200 text-xs mt-1">{filteredUsageAcademic.length ? '+' + filteredUsageAcademic.reduce((a, b) => a.academicImpact > b.academicImpact ? a : b).academicImpact + ' GPA impact score' : ''}</p>
+            <p className="text-2xl font-bold">{filteredUsageAcademic.length ? filteredUsageAcademic.reduce((a, b) => (a.academicImpact || 0) > (b.academicImpact || 0) ? a : b).label : 'N/A'}</p>
+            <p className="text-primary-200 text-xs mt-1">{filteredUsageAcademic.length && filteredUsageAcademic.some(d => d.academicImpact) ? '+' + filteredUsageAcademic.reduce((a, b) => (a.academicImpact || 0) > (b.academicImpact || 0) ? a : b).academicImpact + ' GPA impact score' : ''}</p>
           </div>
           <div>
             <p className="text-primary-100 text-sm mb-2">Mental Health Factor</p>
-            <p className="text-2xl font-bold">{filteredSleepMental.length ? filteredSleepMental.reduce((a, b) => a.mentalHealth > b.mentalHealth ? a : b).sleep + ' hrs Sleep' : 'N/A'}</p>
+            <p className="text-2xl font-bold">{filteredSleepMental.length ? filteredSleepMental.reduce((a, b) => (a.y || 0) > (b.y || 0) ? a : b).x + ' hrs Sleep' : 'N/A'}</p>
             <p className="text-primary-200 text-xs mt-1">Optimal for wellbeing</p>
           </div>
         </div>
