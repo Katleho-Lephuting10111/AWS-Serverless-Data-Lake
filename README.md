@@ -36,7 +36,7 @@ Frontend/
 ├── package.json                    # Dependencies
 ├── vite.config.ts                  # Vite configuration
 ├── tsconfig.json                   # TypeScript configuration
-└── README.md                       # This file
+└── README.md                      
 ```
 
 ## Prerequisites
