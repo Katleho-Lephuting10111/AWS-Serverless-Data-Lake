@@ -4,10 +4,9 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   plugins: [react()],
   
-  // Base path for deployment
-  // Use '/' for root of domain
-  // Use './' for subdirectory deployments
-  base: './',
+  // Base path for deployment - must be '/' when using BrowserRouter
+  // so that asset paths are absolute and work on all routes (/charts, /settings, etc.)
+  base: '/',
   
   server: {
     port: 3000,
@@ -15,6 +14,9 @@ export default defineConfig({
   },
   
   build: {
+    // Minimum browser targets - aligns with what Autoprefixer and Vite transpile for
+    target: ['es2020', 'chrome87', 'firefox78', 'safari14', 'edge88'],
+
     // Output directory for static files
     outDir: 'dist',
     

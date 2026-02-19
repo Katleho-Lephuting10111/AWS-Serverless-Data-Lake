@@ -17,6 +17,20 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
+function safeLS(action: 'get', key: string): string | null
+function safeLS(action: 'set', key: string, value: string): void
+function safeLS(action: 'remove', key: string): void
+function safeLS(action: 'get' | 'set' | 'remove', key: string, value?: string): string | null | void {
+  try {
+    if (action === 'get') return localStorage.getItem(key)
+    if (action === 'set') localStorage.setItem(key, value!)
+    if (action === 'remove') localStorage.removeItem(key)
+  } catch {
+    // localStorage unavailable (Safari private mode, browser policy)
+  }
+  return null
+}
+
 // Mock users for demo authentication
 const MOCK_USERS = [
   {
@@ -50,9 +64,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Check for saved authentication on mount
   useEffect(() => {
     const checkAuth = () => {
-      const savedUser = localStorage.getItem('auth_user')
-      const savedToken = localStorage.getItem('auth_token')
-      const remember = localStorage.getItem('auth_remember')
+      const savedUser = safeLS('get', 'auth_user')
+      const savedToken = safeLS('get', 'auth_token')
+      const remember = safeLS('get', 'auth_remember')
 
       if (savedUser && savedToken && remember === 'true') {
         try {
@@ -61,9 +75,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         } catch (e) {
           console.error('Failed to parse saved user:', e)
           // Clear invalid data
-          localStorage.removeItem('auth_user')
-          localStorage.removeItem('auth_token')
-          localStorage.removeItem('auth_remember')
+          safeLS('remove', 'auth_user')
+          safeLS('remove', 'auth_token')
+          safeLS('remove', 'auth_remember')
         }
       }
       setIsLoading(false)
@@ -99,9 +113,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     // Persist if remember me is checked
     if (rememberMe) {
-      localStorage.setItem('auth_user', JSON.stringify(userWithoutPassword))
-      localStorage.setItem('auth_token', `mock-token-${mockUser.id}`)
-      localStorage.setItem('auth_remember', 'true')
+      safeLS('set', 'auth_user', JSON.stringify(userWithoutPassword))
+      safeLS('set', 'auth_token', `mock-token-${mockUser.id}`)
+      safeLS('set', 'auth_remember', 'true')
     }
 
     setIsLoading(false)
@@ -109,9 +123,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = () => {
     setUser(null)
-    localStorage.removeItem('auth_user')
-    localStorage.removeItem('auth_token')
-    localStorage.removeItem('auth_remember')
+    safeLS('remove', 'auth_user')
+    safeLS('remove', 'auth_token')
+    safeLS('remove', 'auth_remember')
   }
 
   return (
