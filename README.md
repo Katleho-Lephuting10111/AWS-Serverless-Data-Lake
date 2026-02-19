@@ -1,4 +1,4 @@
-# DigiHealth Frontend
+# DigiHealth
 
 A modern, responsive React dashboard application with Tailwind CSS styling. Built with React Router for seamless navigation and a professional layout system.
 
